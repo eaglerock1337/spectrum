@@ -7,25 +7,33 @@
  300 GO TO 2000: REM Main Loop
 1000 REM **** Initialization ***
 1010 LET comp=0
-1810 PRINT "Initialized"
-1820 PRINT "Press key to continue": PAUSE 0
-1900 RETURN
+1410 PRINT "Initialized"
+1420 PRINT "Press key to continue": PAUSE 0
+1430 RETURN
+1500 REM **** New Game *********
+1510 PRINT "New Game"
+1520 GO SUB 7000: REM Intro
+1530 PRINT "Press key to start": PAUSE 0
+1530 GO TO 3000: REM Outside
 2000 REM **** Main Menu ********
 2010 CLS
+2015 PRINT "Time Machine Sim": PRINT
 2020 PRINT "Main Menu"
-2030 PRINT "1. Watch Intro"
-2040 PRINT "2. How to Play"
-2050 PRINT "3. Enter Sim"
-2060 PRINT "4. Save Game"
-2070 PRINT "5. Load Game"
-2080 PRINT "6. Quit TM SIM"
+2030 PRINT "1. New Game"
+2040 PRINT "2. Load Game"
+2050 PRINT "3. Save Game"
+2060 PRINT "4. Enter Sim"
+2070 PRINT "5. Watch Intro"
+2080 PRINT "6. How to Play"
+2090 PRINT "7. Quit TM SIM"
 2100 LET i$=INKEY$
-2110 IF i$="1" THEN GO TO 7000: REM Introduction
-2120 IF i$="2" THEN GO TO 7500: REM How to Play
-2130 IF i$="3" THEN GO TO 3000: REM Enter Sim - Outside
-2140 IF i$="4" THEN GO TO 8000: REM Save Game
-2150 IF i$="5" THEN GO TO 8500: REM Load Game
-2160 IF i$="6" THEN GO TO 9900: REM Program Exit
+2110 IF i$="1" THEN GO TO 1500: REM New Game
+2120 IF i$="2" THEN GO TO 8000: REM Load Game
+2130 IF i$="3" THEN GO TO 8500: REM Save Game
+2140 IF i$="4" THEN GO TO 3000: REM Enter Sim - Outside
+2150 IF i$="5" THEN GO SUB 7000: REM Introduction
+2160 IF i$="6" THEN GO TO 7500: REM How to Play
+2170 IF i$="7" THEN GO TO 9900: REM Program Exit
 2200 GO TO 2100
 3000 REM **** Outside Loop *****
 3010 CLS
@@ -82,20 +90,20 @@
 7010 CLS
 7020 PRINT "Introduction": PRINT
 7030 PRINT "Press key to exit": PAUSE 0
-7100 GO TO 2000: REM Main Menu
+7100 RETURN
 7500 REM **** How-to Loop ******
 7510 CLS
 7520 PRINT "How to Play": PRINT
 7530 PRINT "Press key to exit": PAUSE 0
 7600 GO TO 2000: REM Main Menu
-8000 REM **** Save Loop ********
+8000 REM **** Load Loop ********
 8010 CLS
-8020 PRINT "Save Game": PRINT
+8020 PRINT "Load Game": PRINT
 8030 PRINT "Press key to exit": PAUSE 0
 8100 GO TO 2000: REM Main Menu
-8500 REM **** Load Loop ********
+8500 REM **** Save Loop ********
 8510 CLS
-8520 PRINT "Load Game": PRINT
+8520 PRINT "Save Game": PRINT
 8530 PRINT "Press key to exit": PAUSE 0
 8600 GO TO 2000: REM Main Menu
 9000 REM **** USR Graphics *****
