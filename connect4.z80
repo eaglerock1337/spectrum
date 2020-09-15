@@ -1,0 +1,78 @@
+; Aliases to Sinclair ROM subroutines
+chanopn equ 5633
+print   equ 8252
+cls     equ 0x0DAF
+
+; Sinclair color codes
+black   equ 0
+blue    equ 1
+red     equ 2
+pink    equ 3
+green   equ 4
+cyan    equ 5
+yellow  equ 6
+white   equ 7
+
+; Sinclair PRINT control codes
+ink     equ 16
+paper   equ 17
+flash   equ 18
+bright  equ 19
+inverse equ 20
+over    equ 21
+at      equ 22
+tab     equ 23
+cr      equ 24
+
+; Address in memory
+        org 32768
+
+; Set up user-defined graphics
+        ld hl, udgs
+ 	ld (23675), hl
+
+; Open channel to screen
+        ld a, 2
+        call chanopn
+
+; Main routine
+        call cls
+        call prtitle
+        call grid
+        ret
+
+; Print title
+prtitle ld de, title
+        ld bc, eotit
+        call print
+        ret
+
+; Print grid
+grid    call color
+        call char
+        ret
+
+; don't need
+; Print single character
+char    ld a, 127
+        rst 16
+        ret
+
+; Set color of grid
+color   ld a, ink
+        rst 16
+        ld a, white
+        rst 16
+        ld a, paper
+        rst 16
+        ld a, blue
+        rst 16
+        ret
+
+; Program Data
+empty   defb ink, white, paper, blue
+eoempty equ $ - empty
+title   defb ink, black, paper, white, at, 5, 12, "Connect 4"
+eotit   equ $ - title
+udgs	defb 0, 24, 60, 126, 126, 60, 24, 0
+        end 32768
