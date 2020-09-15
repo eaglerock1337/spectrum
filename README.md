@@ -18,3 +18,4 @@ https://github.com/speccyorg/bas2tap
 ## program list
 
 tmsim - A time machine simulator game. For Spectrum 128 systems or better.
+connect4 - A connect 4 game written in Z80 assembler.
