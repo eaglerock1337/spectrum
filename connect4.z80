@@ -1,11 +1,11 @@
-; Aliases to Sinclair ROM subroutines
+; Aliases to ZX Spectrum ROM subroutines
 cls       equ 3503
 chanopn   equ 5633
 print     equ 8252
 row_9     equ 22816      ; address for screen pos 9, 1
 last_k    equ 23560      ; last key pressed
 
-; Sinclair color codes
+; ZX Spectrum color codes
 black     equ 0
 blue      equ 1
 red       equ 2
@@ -15,7 +15,7 @@ cyan      equ 5
 yellow    equ 6
 white     equ 7
 
-; Sinclair PRINT control codes
+; ZX Spectrum PRINT control codes
 ink       equ 16
 paper     equ 17
 flash     equ 18
@@ -41,10 +41,12 @@ ascii_p   equ 112
           ld a, 2
           call chanopn
 
-; Main routine and loop
+; Screen initialization
           call cls
           call prtitle
           call grid
+
+; Main routine and loop          
 ploop     call drawplay
           ld hl, last_k
           ld a, (hl)
