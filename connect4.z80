@@ -81,12 +81,12 @@ pleft     ld a, (ppos)
           ld (ppos), a   ; Write new position
           jp clrkey
 
-; Clear keypress
+; Clear keypress data
 clrkey    ld hl, last_k
           ld (hl), 0
           jp ploop
 
-; Draw Player
+; Draw player token above board
 drawplay  ld hl, row_9
           ld bc, (ppos)
           add hl, bc
@@ -109,11 +109,11 @@ grid      ld de, board
           call print
           ret          
 
-; Program Data
+; Program data
 ppos      defb 15, 0
 pcol      defb 58, 10
 
-; Print Strings
+; Print strings
 player    defb at, 9, 12
           defb paper, white, ink, white
           defb 144, 144, 144, 144, 144, 144, 144
@@ -139,5 +139,5 @@ title     defb ink, black, paper, white
 eotit     equ $ - title
 
 ; User-defined graphics
-udgs	     defb 0, 24, 60, 126, 126, 60, 24, 0
+udgs      defb 0, 24, 60, 126, 126, 60, 24, 0
           end 32768
