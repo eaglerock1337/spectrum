@@ -26,6 +26,10 @@ at        equ 22
 tab       equ 23
 cr        equ 24
 
+; ASCII codes
+ascii_o   equ 111
+ascii_p   equ 112
+
 ; Address in memory
           org 32768
 
@@ -41,11 +45,47 @@ cr        equ 24
           call cls
           call prtitle
           call grid
-          call playinit
+ploop     call drawplay
+          ld hl, last_k
+          ld a, (hl)
+          cp ascii_p
+          jr z, pright
+          cp ascii_o
+          jr z, pleft
+          jr ploop
           ret
 
-; Initialize Player
-playinit  ld hl, row_9
+; Move player right
+pright    ld a, (ppos)
+          cp 18          ; Right side of game board
+          jr z, ploop
+          ld hl, row_9
+          add hl, bc
+          ld (hl), 63    ; Delete current position
+          ld a, (ppos)
+          inc a
+          ld (ppos), a   ; Write new position
+          jp clrkey
+
+; Move player left
+pleft     ld a, (ppos)
+          cp 12          ; Left side of game board
+          jr z, ploop
+          ld hl, row_9
+          add hl, bc
+          ld (hl), 63    ; Delete current position
+          ld a, (ppos)
+          dec a
+          ld (ppos), a   ; Write new position
+          jp clrkey
+
+; Clear keypress
+clrkey    ld hl, last_k
+          ld (hl), 0
+          jp ploop
+
+; Draw Player
+drawplay  ld hl, row_9
           ld bc, (ppos)
           add hl, bc
           ld a, (pcol)
