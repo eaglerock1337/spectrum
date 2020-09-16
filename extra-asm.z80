@@ -1,0 +1,19 @@
+; Old print grid routine for connect 4, might be useful for something later
+; grid      call color
+;           ld h, 9
+;           ld l, 13
+;           ld d, 6
+; row       ld a, at
+;           rst 16
+;           ld a, h
+;           add a, d
+;           rst 16
+;           ld a, l
+;           rst 16
+;           ld b, 7
+; line      ld a, 144
+;           rst 16
+;           djnz line
+;           dec d
+;           jr nz, row
+;           ret
