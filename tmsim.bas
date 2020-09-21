@@ -16,16 +16,26 @@
 1330 POKE USR CHR$ (144+i)+j,g
 1340 NEXT j
 1350 NEXT i
-1410 PRINT "Initialized"
-1420 PRINT "Press key to continue": PAUSE 0
-1430 RETURN
+1360 LET t$= CHR$ 144+ CHR$ 144+ CHR$ 145+ CHR$ 146
+1370 FOR i=1 TO 3: LET t$=t$+ CHR$ 147: NEXT i
+1380 FOR i=1 TO 16: LET t$=t$+ CHR$ 148: NEXT i
+1390 FOR i=1 TO 3: LET t$=t$+ CHR$ 147: NEXT i
+1400 LET t$=t$+ CHR$ 146+ CHR$ 145+ CHR$ 144+ CHR$ 144
+1410 LET b$= CHR$ 144+ CHR$ 144+ CHR$ 149+ CHR$ 150
+1420 FOR i=1 TO 3: LET b$=b$+ CHR$ 151: NEXT i
+1430 FOR i=1 TO 16: LET b$=b$+ CHR$ 152: NEXT i
+1440 FOR i=1 TO 3: LET b$=b$+ CHR$ 151: NEXT i
+1450 LET b$=b$+ CHR$ 150+ CHR$ 149+ CHR$ 144+ CHR$ 144
+1470 PRINT "Initialized"
+1480 PRINT "Press key to continue": PAUSE 0
+1490 RETURN
 1500 REM **** New Game *********
 1510 PRINT "New Game"
 1520 GO SUB 7000: REM Intro
 1530 PRINT "Press key to start": PAUSE 0
 1540 GO TO 3000: REM Outside
 2000 REM **** Main Menu ********
-2010 CLS
+2010 CLS: BORDER 7
 2015 PRINT "Time Machine Sim": PRINT
 2020 PRINT "Main Menu"
 2030 PRINT "1. New Game"
@@ -45,7 +55,7 @@
 2170 IF i$="7" THEN GO TO 9900: REM Program Exit
 2200 GO TO 2100
 3000 REM **** Outside Loop *****
-3010 CLS
+3010 CLS: BORDER 0
 3020 PRINT "Outside Loop"
 3030 PRINT "1. Enter TM"
 3040 PRINT "2. Exit Sim"
@@ -54,7 +64,7 @@
 3130 IF i$="2" THEN GO TO 2000: REM Main Menu
 3200 GO TO 3100
 4000 REM **** Inside Loop ******
-4010 CLS
+4010 CLS: BORDER 0
 4020 PRINT "Inside Loop"
 4030 IF comp=0 THEN PRINT "Computer: Off"
 4040 IF comp=1 THEN PRINT "Computer: On"
@@ -66,7 +76,7 @@
 4130 IF i$="2" THEN GO TO 3000: REM Sim - Outside
 4200 GO TO 4100
 5000 REM **** Display Loop *****
-5010 CLS
+5010 CLS: BORDER 0
 5020 PRINT "Display Loop"
 5030 PRINT "1. Turn on computer"
 5040 PRINT "2. Look away from display"
@@ -83,13 +93,8 @@
 6000 REM **** TDOS Loop ********
 6010 CLS: BORDER 0
 6020 GO SUB 9500: REM header
-6030 PAPER 4
-6040 LET l$= CHR$ 144+ CHR$ 144+ CHR$ 145+ CHR$ 146
-6050 FOR i=1 TO 3: LET l$=l$+ CHR$ 147: NEXT i
-6060 FOR i=1 TO 16: LET l$=l$+ CHR$ 148: NEXT i
-6070 FOR i=1 TO 3: LET l$=l$+ CHR$ 147: NEXT i
-6080 LET l$=l$+ CHR$ 146+ CHR$ 145+ CHR$ 144+ CHR$ 144
-6090 PRINT AT 3,1;l$
+6030 INK 7: PAPER 0
+6090 PRINT AT 3,1;t$
 6100 LET l$="                            "
 6110 PRINT AT 4,1; CHR$ 144+l$+ CHR$ 144
 6120 PRINT AT 5,1; CHR$ 153+l$+ CHR$ 157
@@ -102,16 +107,12 @@
 6190 PRINT AT 17,1; CHR$ 154+l$+ CHR$ 158
 6200 PRINT AT 18,1; CHR$ 153+l$+ CHR$ 157
 6210 PRINT AT 19,1; CHR$ 144+l$+ CHR$ 144 
-6220 LET l$= CHR$ 144+ CHR$ 149+ CHR$ 150
-6230 FOR i=1 TO 4: LET l$=l$+ CHR$ 151: NEXT i
-6240 FOR i=1 TO 16: LET l$=l$+ CHR$ 152: NEXT i
-6250 FOR i=1 TO 4: LET l$=l$+ CHR$ 151: NEXT i
-6260 LET l$=l$+ CHR$ 150+ CHR$ 149+ CHR$ 144
-6270 PRINT AT 20,1;l$
+6220 PRINT AT 20,1;b$
 6300 REM 30x18 16,8,2,2, 8,4,2,2
-6320 PRINT "TDOS Loop"
-6330 PRINT "1. Shut down computer"
-6340 PRINT "2. Look away from display"
+6310 INK 4
+6320 PRINT AT 5,11; "TDOS Loop"
+6330 PRINT AT 8,9; "1. Shut down"
+6340 PRINT AT 9,9; "2. Look away"
 6400 LET i$=INKEY$
 6410 IF i$="1" THEN GO TO 6500: REM Shutdown Sequence
 6420 IF i$="2" THEN GO TO 4000: REM Sim - Inside
