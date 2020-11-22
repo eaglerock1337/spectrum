@@ -27,21 +27,21 @@ tab       equ 23
 cr        equ 24
 
 ; ASCII codes
+ascii_sp  equ 32
 ascii_o   equ 111
 ascii_p   equ 112
 
 ; Address in memory
           org 32768
 
-; Load user-defined graphics
+; Game setup
+     ; Load user-defined graphics
           ld hl, udgs
  	     ld (23675), hl
-
-; Open channel to screen
+     ; Open channel to screen
           ld a, 2
           call chanopn
-
-; Screen initialization
+     ; Screen initialization
           call cls
           call prtitle
           call grid
@@ -54,6 +54,8 @@ ploop     call drawplay
           jr z, pright
           cp ascii_o
           jr z, pleft
+          cp ascii_sp
+          jr z, pfire
           jr ploop
           ret
 
@@ -80,6 +82,10 @@ pleft     ld a, (ppos)
           dec a
           ld (ppos), a   ; Write new position
           jp clrkey
+
+; Fire player piece
+pfire     ld a, (ppos)
+          sub 
 
 ; Clear keypress data
 clrkey    ld hl, last_k
