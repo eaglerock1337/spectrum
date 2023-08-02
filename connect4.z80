@@ -35,7 +35,7 @@ ascii_p   equ 112
 
 ; Load user-defined graphics
           ld hl, udgs
- 	     ld (23675), hl
+ 	        ld (23675), hl
 
 ; Open channel to screen
           ld a, 2
