@@ -1,5 +1,7 @@
 ;********** Freeway Frog **********
 
+        DEVICE  ZXSPECTRUM48
+
         ORG     27000
 
 START   DI              ; Disable interrupts
@@ -20,8 +22,8 @@ MOVE    CALL    TFCTRL  ; Traffic control routine
         CALL    OVER    ; High score management
         JR      AGAIN   ; New game again
 CONTIN  LD      A,7FH   ; Trap space key pressed
-        IN      A,(OFEH)        ; Scan keyboard
-        AND     I
+        IN      A,(0FEH)        ; Scan keyboard
+        AND     1
         JR      NZ,MOVE
         CALL    FINAL   ; Reset screen & border color
         EXX
@@ -152,7 +154,7 @@ RTRUCK  DB      0,0,0,0,0,0,0,0
         DB      255,255,255,0,0,0,0,0
         DB      255,255,255,255,96,240,240,96
         DB      31,63,127,254,29,27,3,1
-        DB      248,248.248,124,188,220,192,128
+        DB      248,248,248,124,188,220,192,128
         DB      0,0,0,0,0,0,0,0
         DB      0,0,0,0,0,0,0,0
         DB      127,127,127,127,127,127,127,127
@@ -471,7 +473,7 @@ FILCHR  LD      (HL),A
         POP     HL
         INC     HL
         EXX
-        DJNZ    FILHWYL
+        DJNZ    FILHYL
         EXX
         RET
 
@@ -584,8 +586,8 @@ RAND1   CALL    RANDNO          ; Random number routine
         LD      HL,5920H        ; Test jam
         BIT     0,A             ; Odd number is left
         JR      Z,RTRAF         ; Right traffic
-        LD      L,ODFH
-        LD      C,ODEH
+        LD      L,0DFH
+        LD      C,0DEH
 RTRAF   ADD     A,A             ; Get DBINDEX ptr in de
         LD      E,A
         LD      A,(BC)          ; Test 2 char ahead
@@ -716,7 +718,7 @@ MVCTRL  DEC     HL
         JR      NZ,CHGRAF       ; Change real abs flag
         LD      A,(HL)
         INC     A
-        AND     I
+        AND     1
         LD      (HL),A
 CHGRAF  DEC     HL              ; PT dir
         LD      A,(HL)
@@ -848,7 +850,7 @@ MODDB   LD      A,(COLUMN)
         EX      DE,HL
         ADD     HL,BC
         EX      DE,HL
-        JR      LPO
+        JR      LP0
 LDATTR  LD      HL,(ATTPOS)
         LD      DE,(ATTPTR)
         LD      A,(ROW)
@@ -1183,7 +1185,7 @@ NXTSPA  POP     HL
         SBC     HL,BC
         JR      SPCAT1
 
-RESPC   LD      A(PCAREXT)      ; Test PC exist
+RESPC   LD      A,(PCAREXT)     ; Test PC exist
         AND     A
         RET     Z
         LD      DE,ROW
@@ -1306,7 +1308,7 @@ MOVFRG  XOR     A
         LD      C,A             ; C=> Absolute movement
         EX      AF,AF'
         LD      A,0DFH          ; Test right
-        IN      A,(OFEH)
+        IN      A,(0FEH)
         AND     1
         JR      NZ,LEFT
         INC     C
@@ -1321,7 +1323,7 @@ LEFT    LD      A,0DFH          ; Test left
         LD      B,3
 DOWN    LD      A,0DFH          ; Test down
         IN      A,(0FEH)
-        AND     I
+        AND     1
         JR      NZ,UP
         LD      A,C
         ADD     A,L             ; Add 32
@@ -1333,7 +1335,7 @@ DOWN    LD      A,0DFH          ; Test down
         LD      B,2
 UP      LD      A,0F7H          ; Test up
         IN      A,(0FEH)
-        AND     I
+        AND     1
         JR      NZ,VALID
         LD      A,C
         ADD     A,H             ; Add -32
@@ -1357,14 +1359,14 @@ VALID   LD      A,B             ; Store temp dir
         DEC     B
         LD      E,-7
 NETDWN  ADD     HL,BC
-        BIT     O,H
+        BIT     0,H
         JR      Z,VALID1        ; No cross boundary
         LD      A,H
         ADD     A,E
         LD      H,A             ; Adj hob
 VALID1  LD      (TEMPOS),HL
         EX      DE,HL
-        LD      A,4000H         ; Test upscr
+        LD      A,40H         ; Test upscr
         CP      D
         LD      A,E
         JR      C,NVALID
@@ -1381,7 +1383,7 @@ VALID2  AND     1FH             ; Test right boundary
         LD      A,(FRGSTN)
         CP      0A0H            ; Test last frog
         JR      C,YVALID        ; No more frog station
-        INC     a               ; When no frog left
+        INC     A               ; When no frog left
         AND     1FH
         SUB     H
         JR      NC,NVALID
@@ -1688,11 +1690,11 @@ PREZEX  RET
 
 SIREN   LD      A,0BFH
         IN      A,(0FEH)
-        AND     I
+        AND     1
         JR      NZ,NSOUND
         LD      A,(SOUNDF)      ; Reset sound condition
         INC     A
-        AND     I
+        AND     1
         LD      (SOUNDF),A
 NSOUND  LD      A,(SOUNDF)
         AND     A
@@ -1776,6 +1778,6 @@ FINAL   LD      A,56            ; Set white border
         LDIR
         RET
 
+        ; END     START
 
-        END     START
-
+        SAVESNA "freeway.sna",START
