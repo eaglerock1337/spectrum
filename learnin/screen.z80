@@ -1,0 +1,44 @@
+; Screen Display Test
+
+        DEVICE  ZXSPECTRUM48
+
+        org $8000
+
+; constants
+SCR_START = $4000
+SCR_END   = $57FF
+ATT_START = $5800
+ATT_END   = $5AFF
+
+start:
+        exx
+        push hl         ; store hl' for basic
+
+        ld hl,SCR_START                 ; set hl to memory start
+        ld de,SCR_END-SCR_START+1       ; length of screen memory
+        
+loop:
+        call wait       ; delay loop
+        scf             ; set carry flag
+        rr (hl)         ; rotate bits right with carry
+        jr nc,loop      ; loop while carry is 0
+
+        inc hl          ; next byte
+        dec de
+        ld a,d
+        or e
+        jr nz,loop      ; loop while d != e (nonzero)
+
+        pop hl          ; restore hl' for basic
+        exx
+        ret
+
+wait:
+        ld b,$FF
+waitloop:
+        nop
+        djnz waitloop
+        ret        
+
+; deploy snapshot file
+        SAVESNA "screen.sna", start

@@ -1,0 +1,83 @@
+; Print-by-Character Screen Display Test
+
+        DEVICE  ZXSPECTRUM48
+
+        org $8000
+
+; constants
+STACK_POS = $FF57       ; end of available memory
+SCR_START = $4000       ; start of screen memory
+SCR_END   = $57FF       ; end of screen memory
+ATT_START = $5800       ; start of screen attribute memory
+ATT_END   = $5AFF       ; end of screen attribute memory
+WAIT_TIME = $2F         ; delay time
+AREA_CHAR = $0100       ; characters per area
+NEXT_AREA = $0800       ; space until next area
+
+start:
+        exx
+        push hl         ; store hl' for basic
+        ld (spbak),sp   ; backup original stack
+        ld sp,STACK_POS ; set custom program stack
+
+        ld hl,SCR_START ; set hl to start of screen memory
+        ld b,3          ; number of areas
+        ld de,NEXT_AREA ; distance to next area
+
+arealoop:
+        push bc         ; store current loop
+        push hl         ; store first line of area
+        ld bc,AREA_CHAR ; number of characters per area    
+        call charloop   ; run character loop
+
+        pop hl          ; restore first area character
+        pop bc          ; restore current loop
+        add hl,de
+        djnz arealoop
+
+        ld sp,(spbak)   ; restore system stack pointer
+        pop hl          ; restore hl' for basic
+        exx
+        ret
+
+spbak:
+        dw 0
+
+charloop:
+        push bc         ; store current loop
+        push hl         ; store top line of char
+        ld b,8          ; number of lines per character
+
+        call loop       ; main loop
+
+        pop hl          ; restore top character
+        pop bc          ; restore current loop
+        inc hl          ; move to next character
+        dec bc
+        ld a,b
+        or c
+        jr nz,charloop  ; loop for all area characters
+        ret
+
+loop:
+        call wait       ; delay loop
+
+        scf             ; set carry flag
+        rr (hl)         ; rotate bits right with carry
+        jr nc,loop      ; loop while carry is 0
+
+        inc h           ; increment high bit
+        djnz loop       ; loop for all 8 lines
+        ret
+
+wait:
+        push bc          
+        ld b,WAIT_TIME
+waitloop:
+        nop
+        djnz waitloop
+        pop bc
+        ret        
+
+; deploy snapshot file
+        SAVESNA "charscr.sna", start
