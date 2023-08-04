@@ -265,6 +265,7 @@ LBDB    DB      2,1,1,1
         DEFW    48DFH
         DEFW    LBIKE
         DEFW    LBATT
+        DB      2,4
 
 RCDB    DB      3,1,0,0
         DEFW    481BH
@@ -980,7 +981,7 @@ SHAPE   PUSH    HL              ; Save HL pointer
         ADD     A,A
         LD      HL,FRGSHP
         LD      D,0
-        LD      E,0
+        LD      E,A
         ADD     HL,DE           ; Pointer to pos of shape
         LD      E,(HL)          ; DE return shape pointer
         INC     HL
@@ -1321,7 +1322,7 @@ LEFT    LD      A,0DFH          ; Test left
         DEC     C
         LD      DE,FROG4
         LD      B,3
-DOWN    LD      A,0DFH          ; Test down
+DOWN    LD      A,0DDH          ; Test down
         IN      A,(0FEH)
         AND     1
         JR      NZ,UP
@@ -1369,12 +1370,17 @@ VALID1  LD      (TEMPOS),HL
         LD      A,40H         ; Test upscr
         CP      D
         LD      A,E
+        JR      NZ,VALID2
+        CP      20H
         JR      C,NVALID
 VALID2  AND     1FH             ; Test right boundary
         CP      1FH
         JR      Z,NVALID
         LD      HL,50BEH        ; Test bot boundary
         AND     A
+        SBC     HL,DE
+        JR      C,NVALID
+        LD      HL,507EH        ; Test frog station
         SBC     HL,DE
         JR      NC,YVALID
         LD      A,E             ; Test within box
@@ -1431,10 +1437,9 @@ RFRLP3  LD      A,(DE)          ; Restore from db
         EX      AF,AF'
         DEC     A               ; Row count
         JR      Z,RFRATR
-        POP     HL
         EX      AF,AF'
         AND     A
-        LD      C,32
+        LD      C,32            ; Up one line
         SBC     HL,BC
         BIT     0,H
         JR      Z,RFRLP1
@@ -1495,9 +1500,6 @@ SFRLP3  LD      A,(HL)
         DEC     C
         JR      NZ,SFRLP2
         POP     HL
-        EX      AF,AF'
-        DEC     A
-        JR      Z,SFRATR
         EX      AF,AF'
         DEC     A
         JR      Z,SFRATR
@@ -1663,6 +1665,7 @@ CRYLOP  CP      3AH             ; Carry loop
         SUB     10
         DEC     HL
         INC     (HL)            ; Carry
+        INC     HL
         JR      CRYLOP
 UPDDIG  LD      (HL),A
         DEC     HL
