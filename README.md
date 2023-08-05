@@ -34,3 +34,13 @@ charscr  - write screen memory character-by-character with bitshifting.
 colorscr - character screen writing with colorization routine.
 fastscr  - color screen writing routine with fast screen reset using stack.
 rollscr  - color screen writing routine alternating fill and empty routines.
+
+### others folder
+
+A folder for other people's assembly code I'm testing or learning from.
+
+connect4 - based on [Darryl Sloan's Z80 assembly YouTube tutorials](https://www.youtube.com/watch?v=1gHlMpO8gqw&list=PLsoYifahFi520wLrXiSIHv4HJbxPnZVxh)
+knights  - Knights by Darryl Sloan (from [World of Spectrum](https://worldofspectrum.net/item/0032308/))
+freeway  - Freeway Frog - Frogger clone from the book
+           Spectrum Machine Language for the Absolute Beginner
+           Melbourne House Publishers, edited by William Tang

@@ -13,7 +13,6 @@ ATR_RAM         equ $0300       ; total attribute memory
 WAIT_TIME       equ $01         ; number of delay loops
 AREA_CHAR       equ $0100       ; characters per area
 NEXT_AREA       equ $0800       ; space until next area
-COLORS  equ spbak-colormap      ; size of color map data block
 
 ; main routine
 start:
@@ -32,6 +31,8 @@ start:
         ret
 
 ; program data
+COLORS  equ spbak-colormap      ; size of color map data block
+
 colormap: ;Blk Blu Red Mag Grn Cyn Yel Wht
         db $38,$08,$0A,$1A,$1C,$2C,$2E,$3E      ; normal color cycle
         db $38,$48,$4A,$5A,$5C,$6C,$6E,$7E      ; bright color cycle
