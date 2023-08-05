@@ -1,0 +1,46 @@
+# file opened: screen.z80
+ 1    0000              ; Screen Display Test
+ 2    0000
+ 3    0000                      DEVICE  ZXSPECTRUM48
+ 4    0000
+ 5    0000                      org $8000
+ 6    8000
+ 7    8000              ; constants
+ 8    8000              SCR_START = $4000
+ 9    8000              SCR_END   = $57FF
+10    8000              ATT_START = $5800
+11    8000              ATT_END   = $5AFF
+12    8000
+13    8000              start:
+14    8000 D9                   exx
+15    8001 E5                   push hl         ; store hl' for basic
+16    8002
+17    8002 21 00 40             ld hl,SCR_START                 ; set hl to memory start
+18    8005 11 00 18             ld de,SCR_END-SCR_START+1       ; length of screen memory
+19    8008
+20    8008              loop:
+21    8008 CD 19 80             call wait       ; delay loop
+22    800B 37                   scf             ; set carry flag
+23    800C CB 1E                rr (hl)         ; rotate bits right with carry
+24    800E 30 F8                jr nc,loop      ; loop while carry is 0
+25    8010
+26    8010 23                   inc hl          ; next byte
+27    8011 1B                   dec de
+28    8012 7A                   ld a,d
+29    8013 B3                   or e
+30    8014 20 F2                jr nz,loop      ; loop while d != e (nonzero)
+31    8016
+32    8016 E1                   pop hl          ; restore hl' for basic
+33    8017 D9                   exx
+34    8018 C9                   ret
+35    8019
+36    8019              wait:
+37    8019 06 FF                ld b,$FF
+38    801B              waitloop:
+39    801B 00                   nop
+40    801C 10 FD                djnz waitloop
+41    801E C9                   ret
+42    801F
+43    801F              ; deploy snapshot file
+44    801F                      SAVESNA "screen.sna", start
+# file closed: screen.z80

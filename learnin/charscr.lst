@@ -1,0 +1,85 @@
+# file opened: charscr.z80
+ 1    0000              ; Print-by-Character Screen Display Test
+ 2    0000
+ 3    0000                      DEVICE  ZXSPECTRUM48
+ 4    0000
+ 5    0000                      org $8000
+ 6    8000
+ 7    8000              ; constants
+ 8    8000              STACK_POS = $FF57       ; end of available memory
+ 9    8000              SCR_START = $4000       ; start of screen memory
+10    8000              SCR_END   = $57FF       ; end of screen memory
+11    8000              ATT_START = $5800       ; start of screen attribute memory
+12    8000              ATT_END   = $5AFF       ; end of screen attribute memory
+13    8000              WAIT_TIME = $2F         ; delay time
+14    8000              AREA_CHAR = $0100       ; characters per area
+15    8000              NEXT_AREA = $0800       ; space until next area
+16    8000
+17    8000              start:
+18    8000 D9                   exx
+19    8001 E5                   push hl         ; store hl' for basic
+20    8002 ED 73 25 80          ld (spbak),sp   ; backup original stack
+21    8006 31 57 FF             ld sp,STACK_POS ; set custom program stack
+22    8009
+23    8009 21 00 40             ld hl,SCR_START ; set hl to start of screen memory
+24    800C 06 03                ld b,3          ; number of areas
+25    800E 11 00 08             ld de,NEXT_AREA ; distance to next area
+26    8011
+27    8011              arealoop:
+28    8011 C5                   push bc         ; store current loop
+29    8012 E5                   push hl         ; store first line of area
+30    8013 01 00 01             ld bc,AREA_CHAR ; number of characters per area
+31    8016 CD 27 80             call charloop   ; run character loop
+32    8019
+33    8019 E1                   pop hl          ; restore first area character
+34    801A C1                   pop bc          ; restore current loop
+35    801B 19                   add hl,de
+36    801C 10 F3                djnz arealoop
+37    801E
+38    801E ED 7B 25 80          ld sp,(spbak)   ; restore system stack pointer
+39    8022 E1                   pop hl          ; restore hl' for basic
+40    8023 D9                   exx
+41    8024 C9                   ret
+42    8025
+43    8025              spbak:
+44    8025 00 00                dw 0
+45    8027
+46    8027              charloop:
+47    8027 C5                   push bc         ; store current loop
+48    8028 E5                   push hl         ; store top line of char
+49    8029 06 08                ld b,8          ; number of lines per character
+50    802B
+51    802B CD 37 80             call loop       ; main loop
+52    802E
+53    802E E1                   pop hl          ; restore top character
+54    802F C1                   pop bc          ; restore current loop
+55    8030 23                   inc hl          ; move to next character
+56    8031 0B                   dec bc
+57    8032 78                   ld a,b
+58    8033 B1                   or c
+59    8034 20 F1                jr nz,charloop  ; loop for all area characters
+60    8036 C9                   ret
+61    8037
+62    8037              loop:
+63    8037 CD 43 80             call wait       ; delay loop
+64    803A
+65    803A 37                   scf             ; set carry flag
+66    803B CB 1E                rr (hl)         ; rotate bits right with carry
+67    803D 30 F8                jr nc,loop      ; loop while carry is 0
+68    803F
+69    803F 24                   inc h           ; increment high bit
+70    8040 10 F5                djnz loop       ; loop for all 8 lines
+71    8042 C9                   ret
+72    8043
+73    8043              wait:
+74    8043 C5                   push bc
+75    8044 06 2F                ld b,WAIT_TIME
+76    8046              waitloop:
+77    8046 00                   nop
+78    8047 10 FD                djnz waitloop
+79    8049 C1                   pop bc
+80    804A C9                   ret
+81    804B
+82    804B              ; deploy snapshot file
+83    804B                      SAVESNA "charscr.sna", start
+# file closed: charscr.z80
