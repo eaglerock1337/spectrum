@@ -1,0 +1,143 @@
+# file opened: fastscr.z80
+  1   0000              ; Optimized Print-by-Character Screen Color Display Test
+  2   0000
+  3   0000                      DEVICE  ZXSPECTRUM48
+  4   0000
+  5   0000                      org $8000
+  6   8000
+  7   8000              ; constants
+  8   8000              STACK_POS       equ $FF50       ; near end of available memory
+  9   8000              SCR_START       equ $4000       ; start of screen memory
+ 10   8000              SCR_RAM         equ $1800       ; total screen memory
+ 11   8000              ATR_START       equ $5800       ; start of screen attribute memory
+ 12   8000              ATR_RAM         equ $0300       ; total attribute memory
+ 13   8000              WAIT_TIME       equ $01         ; number of delay loops
+ 14   8000              AREA_CHAR       equ $0100       ; characters per area
+ 15   8000              NEXT_AREA       equ $0800       ; space until next area
+ 16   8000              COLORS  equ spbak-colormap      ; size of color map data block
+ 17   8000
+ 18   8000              ; main routine
+ 19   8000              start:
+ 20   8000 D9                   exx             ; swap registers
+ 21   8001 E5                   push hl         ; store hl' for basic
+ 22   8002 ED 73 2B 80          ld (spbak),sp   ; backup original stack
+ 23   8006 31 50 FF             ld sp,STACK_POS ; set custom program stack
+ 24   8009
+ 25   8009 FD 21 19 80          ld iy,colormap  ; set color pointer register
+ 26   800D 06 12                ld b,COLORS     ; number of colors
+ 27   800F CD 2F 80             call color      ; color loop routine
+ 28   8012
+ 29   8012 ED 7B 2B 80          ld sp,(spbak)   ; restore system stack pointer
+ 30   8016 E1                   pop hl          ; restore hl' for basic
+ 31   8017 D9                   exx             ; swap registers
+ 32   8018 C9                   ret
+ 33   8019
+ 34   8019              ; program data
+ 35   8019              colormap:
+ 36   8019 38 01 0A 13          db $38,$01,$0A,$13,$1C,$25,$2E,$37      ; normal color cycle
+ 36   801D 1C 25 2E 37
+ 37   8021 38 41 4A 53          db $38,$41,$4A,$53,$5C,$65,$6E,$77      ; bright color cycle
+ 37   8025 5C 65 6E 77
+ 38   8029 78 07                db $78,$07                              ; reset screen
+ 39   802B              spbak:
+ 40   802B 00 00                dw 0            ; back up system stack pointer
+ 41   802D              spbuff:
+ 42   802D 00 00                dw 0            ; back up program stack pointer
+ 43   802F
+ 44   802F              ; color loop routine
+ 45   802F              color:
+ 46   802F C5                   push bc         ; store current loop
+ 47   8030 CD 41 80             call reset      ; reset screen
+ 48   8033 21 00 40             ld hl,SCR_START ; set hl to start of screen memory
+ 49   8036 06 03                ld b,3          ; number of areas
+ 50   8038 CD 74 80             call screen     ; run screen print routine
+ 51   803B FD 23                inc iy          ; move to next color code
+ 52   803D C1                   pop bc          ; restore current loop
+ 53   803E 10 EF                djnz color      ; loop for the number of colors
+ 54   8040 C9                   ret
+ 55   8041
+ 56   8041              ; screen reset routine
+ 57   8041              reset:
+ 58   8041 21 00 58             ld hl,ATR_START ; set hl to attribute buffer
+ 59   8044 01 80 01             ld bc,ATR_RAM/2 ; set bc to ram size in words
+ 60   8047 FD 56 00             ld d,(iy)       ; load attribute pattern
+ 61   804A FD 5E 00             ld e,(iy)       ; load attribute pattern
+ 62   804D CD 5D 80             call fillram    ; fill attribute memory
+ 63   8050 21 00 40             ld hl,SCR_START ; set hl to screen buffer
+ 64   8053 01 00 0C             ld bc,SCR_RAM/2 ; set bc to ram size in words
+ 65   8056 11 00 00             ld de,$00       ; empty screen pattern
+ 66   8059 CD 5D 80             call fillram    ; fill screen memory
+ 67   805C C9                   ret
+ 68   805D
+ 69   805D              ; ram fill routine
+ 70   805D              fillram:
+ 71   805D                      ; hl - start of memory block
+ 72   805D                      ; bc - number of words
+ 73   805D                      ; dc - word to write
+ 74   805D ED 73 2D 80          ld (spbuff),sp  ; back up stack pointer
+ 75   8061 09                   add hl,bc
+ 76   8062 09                   add hl,bc       ; set hl to end of memory
+ 77   8063 F9                   ld sp,hl        ; make memory block the stack
+ 78   8064 3E FF                ld a,$FF        ; fill a to check for underruns
+ 79   8066              ramloop:
+ 80   8066 D5                   push de         ; push word
+ 81   8067 0D                   dec c           ; decrement loop low byte
+ 82   8068 20 FC                jr nz,ramloop   ; loop until empty
+ 83   806A 05                   dec b           ; decrement high byte too
+ 84   806B B8                   cp b            ; check for underflow
+ 85   806C C2 66 80             jp nz,ramloop   ; loop until empty
+ 86   806F ED 7B 2D 80          ld sp,(spbuff)  ; restore stack pointer
+ 87   8073 C9                   ret
+ 88   8074
+ 89   8074              ; screen print routine
+ 90   8074              screen:
+ 91   8074 C5                   push bc         ; store current loop
+ 92   8075 E5                   push hl         ; store first line of area
+ 93   8076 01 00 01             ld bc,AREA_CHAR ; number of characters per area
+ 94   8079 3E FF                ld a,$FF        ; store for checking underflow
+ 95   807B CD 87 80             call area       ; run area print routine
+ 96   807E E1                   pop hl          ; restore first area character
+ 97   807F 01 00 08             ld bc,NEXT_AREA ; stage next area differential
+ 98   8082 09                   add hl,bc       ; add distance to next area
+ 99   8083 C1                   pop bc          ; restore current loop
+100   8084 10 EE                djnz screen     ; loop over 3 screen areas
+101   8086 C9                   ret
+102   8087
+103   8087              ; area print routine
+104   8087              area:
+105   8087 C5                   push bc         ; store current loop
+106   8088 E5                   push hl         ; store top line of character
+107   8089 06 08                ld b,8          ; number of color runs
+108   808B CD 97 80             call loop       ; run character print routine
+109   808E E1                   pop hl          ; restore top line of character
+110   808F C1                   pop bc          ; restore current loop
+111   8090 23                   inc hl          ; move to next character position
+112   8091 0B                   dec bc          ; decrement loop counter
+113   8092 78                   ld a,b          ; prepare to compare high/low bytes
+114   8093 B1                   or c            ; check if loop counter is zero
+115   8094 20 F1                jr nz,area      ; loop for all area characters
+116   8096 C9                   ret
+117   8097
+118   8097              ; main character print routine
+119   8097              loop:
+120   8097 CD A3 80             call wait       ; delay loop
+121   809A 37                   scf             ; set carry flag
+122   809B CB 1E                rr (hl)         ; rotate bits right with carry
+123   809D 30 F8                jr nc,loop      ; loop while carry is 0
+124   809F 24                   inc h           ; increment high bit
+125   80A0 10 F5                djnz loop       ; loop for all 8 lines
+126   80A2 C9                   ret
+127   80A3
+128   80A3              ; delay subroutine
+129   80A3              wait:
+130   80A3 C5                   push bc         ; store current loop
+131   80A4 06 01                ld b,WAIT_TIME  ; set number of nops
+132   80A6              waitloop:
+133   80A6 00                   nop             ; do nothing
+134   80A7 10 FD                djnz waitloop   ; loop for all nops
+135   80A9 C1                   pop bc          ; restore current loop
+136   80AA C9                   ret
+137   80AB
+138   80AB              ; deploy snapshot file
+139   80AB                      SAVESNA "fastscr.sna", start
+# file closed: fastscr.z80
