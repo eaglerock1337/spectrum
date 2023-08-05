@@ -1,0 +1,1786 @@
+;********** Freeway Frog **********
+
+        DEVICE  ZXSPECTRUM48
+
+        ORG     27000
+
+START   DI              ; Disable interrupts
+        EXX             ; Swap registers
+        PUSH    HL      ; Preserve HL' register pair
+        EXX
+AGAIN   CALL    INIT    ; Initialization
+MOVE    CALL    TFCTRL  ; Traffic control routine
+        CALL    RESPC   ; Restore underneath
+        CALL    MOVTRF  ; Move traffic
+        CALL    POLICE  ; Police car routine
+        CALL    FROG    ; Frog module
+        CALL    CALSCR  ; Calculate & display score
+        CALL    SIREN   ; Siren or delay
+        LD      A,(GAMFLG)      ; Finish when no frog
+        AND     A
+        JR      NZ,CONTIN
+        CALL    OVER    ; High score management
+        JR      AGAIN   ; New game again
+CONTIN  LD      A,7FH   ; Trap space key pressed
+        IN      A,(0FEH)        ; Scan keyboard
+        AND     1
+        JR      NZ,MOVE
+        CALL    FINAL   ; Reset screen & border color
+        EXX
+        POP     HL      ; Retrieve HL'
+        EXX
+        EI              ; Enable interrupts
+        RET             ; Return to operating system
+
+;********** User-Defined Graphics & Attributes **********
+
+FRGSHP  DEFW    FROG1   ; Up Frog
+        DEFW    FROG2   ; Right Frog
+        DEFW    FROG3   ; Down Frog
+        DEFW    FROG4   ; Left Frog
+
+FROG1   DB      111,15,31,159,220,216,120,48
+        DB      246,240,248,249,59,27,30,12
+        DB      0,1,35,37,111,79,223,255
+        DB      0,128,196,164,246,242,251,255
+
+FROG2   DB      31,31,31,127,252,193,113,56
+        DB      254,244,248,240,192,156,240,192
+        DB      56,113,193,252,127,31,31,31
+        DB      192,240,156,192,240,248,244,254
+
+FROG3   DB      255,223,79,111,37,35,1,0
+        DB      255,251,242,246,164,196,128,0
+        DB      48,120,216,220,159,31,15,111
+        DB      12,30,27,59,249,248,240,246
+
+FROG4   DB      127,47,31,15,3,57,15,3
+        DB      240,240,248,254,63,131,142,28
+        DB      3,15,57,3,15,31,47,127
+        DB      28,142,131,63,254,248,240,240
+
+LBIKE   DB      0,0,0,0,0,0,0,0
+        DB      31,63,115,81,169,112,112,32
+        DB      254,252,252,234,213,206,14,4
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      1,3,1,0,3,4,14,31
+        DB      128,192,192,224,224,112,119,255
+        DB      0,0,0,0,0,0,0,0
+
+LBATT   DB      0,7,7,0
+        DB      0,7,7,0
+
+RBIKE   DB      0,0,0,0,0,0,0,0
+        DB      127,63,63,87,171,115,112,32
+        DB      248,252,206,138,149,14,14,4
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      1,3,3,7,7,14,238,255
+        DB      128,192,128,0,192,32,112,248
+        DB      0,0,0,0,0,0,0,0
+
+RBATT   DB      0,7,7,0
+        DB      0,7,7,0
+
+LCAR    DB      0,0,0,0,0,0,0,0
+        DB      0,0,3,7,15,2,0,0
+        DB      7,255,255,159,111,247,240,96
+        DB      128,255,255,255,255,254,0,0
+        DB      240,254,255,159,111,246,240,96
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,63,97,193
+        DB      0,0,0,0,0,0,128,192
+        DB      0,0,0,0,0,0,0,0
+
+LCATT   DB      0,6,6,6,6,0
+        DB      0,0,0,6,6,0
+
+RCAR    DB      0,0,0,0,0,0,0,0
+        DB      15,127,255,249,246,111,15,6
+        DB      1,255,255,255,255,127,0,0
+        DB      224,255,255,249,246,239,15,6
+        DB      0,0,192,224,240,64,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,1,3
+        DB      0,0,0,0,0,252,134,131
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+
+RCATT   DB      0,2,2,2,2,0
+        DB      0,2,2,0,0,0
+
+LTRUCK  DB      0,0,0,0,0,0,0,0
+        DB      31,31,31,62,61,59,3,1
+        DB      248,252,254,127,184,216,192,128
+        DB      255,255,255,255,6,15,15,6
+        DB      255,255,255,0,0,0,0,0
+        DB      255,255,255,0,0,0,0,0
+        DB      255,255,255,0,6,15,15,6
+        DB      254,254,254,4,50,122,122,48
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,7,9,17,17,31,31
+        DB      2,2,250,250,254,252,252,248
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      254,254,254,254,254,254,254,254
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,254,254,254
+        DB      0,0,0,0,0,0,0,0
+
+LTATT   DB      0,3,3,5,5,5,5,5,0
+        DB      0,3,3,5,5,5,5,5,0
+        DB      0,0,0,5,5,5,5,5,0
+
+RTRUCK  DB      0,0,0,0,0,0,0,0
+        DB      127,127,127,32,76,94,94,12
+        DB      255,255,255,0,96,240,240,96
+        DB      255,255,255,0,0,0,0,0
+        DB      255,255,255,0,0,0,0,0
+        DB      255,255,255,255,96,240,240,96
+        DB      31,63,127,254,29,27,3,1
+        DB      248,248,248,124,188,220,192,128
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      127,127,127,127,127,127,127,127
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      255,255,255,255,255,255,255,255
+        DB      64,64,95,95,127,63,63,31
+        DB      0,0,224,144,136,136,248,248
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,127,127,127
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,255,255,255
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+        DB      0,0,0,0,0,0,0,0
+
+RTATT   DB      0,5,5,5,5,5,3,3,0
+        DB      0,5,5,5,5,5,3,3,0
+        DB      0,5,5,5,5,5,0,0,0
+
+BLANK   DB      0,0,0,0
+
+FRGSTR  DS      36      ; 4*8+4
+PCSTR   DS      120     ; 12*8+12+7 (this should be 115?)
+
+;********** Object database **********
+
+OB1EXT  DEFB    0       ; Object 1 Existence
+        DEFB    0       ; Cycle count
+        DEFB    0       ; Direction, 0=>right
+        DEFB    0       ; Object 1 pos real/abs flag
+        DEFW    0       ; Position counter
+        DEFW    0       ; Shape pointer
+        DEFW    0       ; Attribute pointer
+        DEFB    0       ; Row counter
+        DEFB    0       ; Column pointer
+
+OB2EXT  DB      0,0,0,0
+        DEFW    0
+        DEFW    0
+        DEFW    0
+        DB      0,0
+
+OB3EXT  DB      0,0,0,0
+        DEFW    0
+        DEFW    0
+        DEFW    0
+        DB      0,0
+
+OB4EXT  DB      0,0,0,0
+        DEFW    0
+        DEFW    0
+        DEFW    0
+        DB      0,0
+
+OB5EXT  DB      0,0,0,0
+        DEFW    0
+        DEFW    0
+        DEFW    0
+        DB      0,0
+
+OB6EXT  DB      0,0,0,0
+        DEFW    0
+        DEFW    0
+        DEFW    0
+        DB      0,0
+
+PCAREXT DEFB    0       ; Police car database
+PCARCYC DEFB    0
+PCARDIR DEFB    0
+PCARRAP DEFB    0
+PCARPOS DEFW    0
+PCARSHP DEFW    0
+PCARATT DEFW    0
+PCARROW DEFB    2
+PCARCOL DEFB    6
+
+FRGEXT  DEFB    0       ; Frog database
+FRGCYC  DEFB    0
+FRGDIR  DEFB    0       ; 0:up 1:rht 2:dn 3:lft
+FRGPOS  DEFW    0
+FROGSH  DEFW    0
+FRGATR  DEFB    0
+
+FRGDB   DB      8,8,1
+FRGSTN  DEFW    50ACH   ; Initial position of frog
+        DEFW    FROG1
+        DB      4       ; Attr. total 8 chars
+
+DBINDEX DEFW    RBDB    ; Right bike db
+        DEFW    LBDB    ; Left bike db
+        DEFW    RCDB    ; Right car db
+        DEFW    LCDB    ; Left car db
+        DEFW    RTDB    ; Right truck db
+        DEFW    LTDB    ; Left truck db
+
+RBDB    DB      2,1,0,0 ; Ext cnt dir raf
+        DEFW    481DH   ; Pos
+        DEFW    RBIKE   ; Right bike
+        DEFW    RBATT   ; Attribute
+        DB      2,4     ; Row col
+
+LBDB    DB      2,1,1,1
+        DEFW    48DFH
+        DEFW    LBIKE
+        DEFW    LBATT
+        DB      2,4
+
+RCDB    DB      3,1,0,0
+        DEFW    481BH
+        DEFW    RCAR
+        DEFW    RCATT
+        DB      2,6
+
+LCDB    DB      3,1,1,1
+        DEFW    48DFH
+        DEFW    LCAR
+        DEFW    LCATT
+        DB      2,6
+
+RTDB    DB      6,1,0,0
+        DEFW    4818H
+        DEFW    RTRUCK
+        DEFW    RTATT
+        DB      3,9
+
+LTDB    DB      6,1,1,1
+        DEFW    48DFH
+        DEFW    LTRUCK
+        DEFW    LTATT
+        DB      3,9
+
+LPCDB   DB      1,1,1,1
+        DEFW    48DFH
+        DEFW    LCAR
+        DEFW    LPCATT
+        DB      2,6
+
+LPCATT  DB      0,5,5,5,5,0
+        DB      0,0,0,5,5,0
+
+RPCDB   DB      1,1,0,0
+        DEFW    481BH
+        DEFW    RCAR
+        DEFW    RPCATT
+        DB      2,6
+
+RPCATT  DB      0,5,5,5,5,0
+        DB      0,5,5,0,0,0
+
+;********** Tones **********
+
+PCTON1  DB      41,0,0F0H,1     ; First police car tone
+PCTON2  DB      23,0,8CH,3      ; Second police car tone
+
+HOMTON  DB      46H,0,0C7H,4    ; Frog reach home tone
+        DB      5DH,0,8CH,3
+        DB      7CH,0,0A1H,2
+        DB      0AAH,0,0F1H,1
+        DB      0DEH,0,6DH,1
+        DB      2BH,1,9,1
+        DB      8BH,1,0BFH,0
+        DB      0FH,2,88H,0
+        DB      0C0H,2,5EH,0
+DIETON  DB      84H,3,43H,0     ; Frog dying tone, reverse
+
+;********** Scoring & other variables ***********
+
+SCRMS1  DM      'Score '
+SCORE   DB      30H,30H,30H,30H,30H,30H
+SCRMS2  DM      'HIGH SCORE '
+HISCR   DB      30H,30H,30H,30H,30H
+
+IMAGE   DS      5       ; Printing image of score
+UPDWN   DEFB    0       ; Get when frog moves up or down
+
+COLUMN  DB      0       ; Variable storing shape column
+ROW     DB      0       ; Variable storing shape row
+SKIP    DEFB    0       ; Char skipping during draw
+FILL    DEFB    0       ; Char drawn
+ATTPOS  DEFW    0       ; Holding the attribute file ptr
+ATTR    DB      0       ; Attr of character block drawn
+DRWPOS  DEFW    0       ; Draw Position
+STRPOS  DEFW    0       ; Store position
+
+ATTPTR  DEFW    0
+NEWPOS  DEFW    0       ; New traffic object position
+POSPTR  DEFW    0       ; Traffic position database ptr
+GENFLG  DEFB    0       ; Traffic regeneration flag
+
+JAMFLG  DEFB    0       ; Set to 1 for traffic move jam
+
+CHASE   DEFB    0       ; Set when police car appears
+SOUNDF  DEFB    0       ; Set when user wants siren sound
+TONFLG  DEFB    0       ; Determine which siren tone
+RND     DEFW    0       ; Pointer to ROM for random num
+
+GAMFLG  DEFB    1       ; End if zero
+OLDFRG  DEFW    0       ; Old frog pos
+NEWFRG  DEFW    0       ; New frog pos
+CRHFLG  DEFB    0       ; Set to 1 when frog has crashed
+TEMDIR  DEFB    0       ; Frog temporary new direction
+TEMPOS  DEFW    0       ; Frog temporary new position
+TEMSHP  DEFW    0       ; Frog temporary new shape
+
+BOTHY1  EQU     5020H   ; 0,38. 0,39
+BOTHY2  EQU     5120H
+TOPHY1  EQU     46A0H   ; 0,128. 0,129
+TOPHY2  EQU     47A0H
+MIDHY1  EQU     4B60H   ; x,83. x,84
+MIDHY2  EQU     4C60H
+
+CHRSET  EQU     3C00H   ; First 256 bytes nothing
+
+NUMFRG  DEFB    5       ; Number of frogs
+
+;********** Initialization *********
+
+INIT    XOR     A               ; 000 FOR D2 D1 D0
+        OUT     (0FEH),A        ; Set border color
+        LD      (23624),A       ; To black
+        LD      (CRHFLG),A
+        LD      (FRGEXT),A      ; Set frog nonexistant
+        INC     A
+        LD      (GAMFLG),A      ; Set game flag
+        LD      A,5             ; Initialize frog number
+        LD      (NUMFRG),A
+        LD      A,R             ; Generate random ptr
+        AND     3FH             ; For this cycle
+        LD      H,A             ; Ptr points to ROM
+        LD      A,R
+        LD      L,A
+        LD      (RND),HL
+        LD      HL,50ACH        ; Init frog station
+        LD      (FRGSTN),HL
+        CALL    CLRSCR          ; Clear screen routine
+        CALL    DRWHWY          ; Draw highway
+        CALL    LINEUP          ; Line up all existing frogs
+        LD      HL,4000H        ; Message location
+        LD      DE,SCRMS1       ; Load score message
+        LD      B,6
+        CALL    DISASC          ; Display ASCII Character
+        LD      HL,SCORE+1      ; Print score
+        CALL    SCRIMG          ; Convert to printable image
+        LD      HL,4006H
+        LD      DE,IMAGE
+        LD      B,5
+        CALL    DISASC
+        LD      HL,400EH        ; High score message
+        LD      DE,SCRMS2
+        LD      B,11
+        CALL    DISASC
+        LD      HL,HISCR
+        CALL    SCRIMG
+        LD      HL,4019H
+        LD      DE,IMAGE
+        LD      B,5
+        CALL    DISASC
+        LD      HL,OB1EXT       ; Set all objects nonexistant
+        LD      DE,12
+        LD      B,7
+        XOR     A
+INTLP1  LD      (HL),A
+        ADD     HL,DE
+        DJNZ    INTLP1
+        LD      (CHASE),A       ; Set no police car chase
+        INC     A
+        LD      (SOUNDF),A      ; Set siren on
+        LD      HL,SCORE        ; Initialize score to
+        LD      DE,SCORE+1      ; ASCII zero ie 30H
+        LD      C,5
+        LD      (HL),30H
+        LDIR                    ; Init score to 30H
+        RET
+
+;********** Draw highway **********
+
+DRWHWY  LD      HL,40A0H        ; Fill top hwy
+        CALL    FILHWY
+        LD      HL,4860H        ; Fill middle hwy
+        CALL    FILHWY
+        LD      HL,5020H        ; Fill bottom hwy
+        CALL    FILHWY
+        LD      HL,TOPHY1       ; Reverse built highway
+        LD      DE,TOPHY2
+        XOR     A
+        CALL    HIGHWY
+        LD      HL,BOTHY1
+        LD      DE,BOTHY2
+        CALL    HIGHWY
+        LD      HL,MIDHY1
+        LD      DE,MIDHY2
+        LD      A,195           ; Binary 110000011
+HIGHWY  LD      B,32            ; 32*8 bits
+HWYLOP  LD      (HL),A
+        LD      (DE),A
+        INC     HL
+        INC     DE
+        DJNZ    HWYLOP
+        RET
+
+;********** Fill highway **********
+
+FILHWY  LD      A,0FFH
+        EXX
+        LD      B,32
+FILHYL  EXX
+        PUSH    HL
+        LD      B,8
+FILCHR  LD      (HL),A
+        INC     H
+        DJNZ    FILCHR
+        POP     HL
+        INC     HL
+        EXX
+        DJNZ    FILHYL
+        EXX
+        RET
+
+;********** Lineup **********
+;
+; Draw all frogs left on the screen
+;
+
+LINEUP  LD      A,1             ; Right frog
+        LD      (FRGDIR),A
+        LD      DE,FROG2        ; Right frog shape
+        LD      HL,(FRGSTN)     ; Frog station
+        LD      A,4             ; (Paper 0)*8+(Ink 4)
+        LD      (ATTR),A
+        LD      A,(NUMFRG)      ; Number of frog
+        AND     A               ; Test for no frog left
+        RET     Z
+        LD      B,A             ; Number of frog times
+DRAWLN  PUSH    BC
+        PUSH    DE
+        PUSH    HL
+        CALL    DRWFRG          ; Draw frog routine
+        POP     HL
+        POP     DE
+        DEC     HL
+        DEC     HL
+        DEC     HL
+        POP     BC
+        DJNZ    DRAWLN
+        RET
+
+;********** Draw frog routine **********
+
+DRWFRG  LD      A,2             ; Two row frog shape
+        EX      AF,AF'
+        PUSH    HL              ; Store pos ptr
+FRGLP0  PUSH    HL
+        LD      C,2             ; Column count
+FRGLP1  PUSH    HL
+        LD      B,B             ; Draw character
+FRGLP2  LD      A,(DE)
+        LD      (HL),A
+        INC     DE
+        INC     H               ; Next byte of char
+        DJNZ    FRGLP2
+        POP     HL              ; Current pointer
+        INC     HL              ; Move to next char pos
+        DEC     C               ; Decrement column count
+        JR      NZ,FRGLP1
+        POP     HL              ; Row pointer
+        EX      AF,AF'
+        DEC     A               ; Decrement lines of char
+        LD      C,32
+        JR      Z,FRGATT        ; Load frog attribute
+        EX      AF,AF'
+        AND     A
+        SBC     HL,BC           ; Move 32 char 1 line up
+        BIT     0,H             ; Test cross scr section
+        JR      Z,FRGLP0
+        LD      A,H
+        SUB     7               ; Up one screen section
+        LD      H,A
+        JR      FRGLP0
+FRGATT  POP     HL              ; Position pointer
+        LD      A,H             ; Convert to attribute pointer
+        AND     18H
+        SRA     A
+        SRA     A
+        SRA     A
+        ADD     A,58H
+        LD      H,A
+        LD      A,(ATTR)        ; Fill frog shape attribute
+        LD      (HL),A
+        INC     HL              ; Next character
+        LD      (HL),A
+        SBC     HL,BC           ; One line up
+        LD      (HL),A
+        DEC     HL              ; Next char left
+        LD      (HL),A
+        RET
+
+;********** Traffic control routine **********
+
+TFCTRL  LD      HL,GENFLG       ; Check regeneration flag
+        XOR     A
+        CP      (HL)
+        JR      Z,GENER         ; If zero, test generate
+        DEC     (HL)            ; Decrement generation flag
+        RET
+GENER   LD      HL,OB1EXT       ; Start of traffic db
+        LD      DE,12           ; 12 byte message
+        LD      B,6             ; 6 db pairs
+TCTRLP  CP      (HL)            ; Test existence
+        JR      NZ,NSPACE
+        CALL    REGEN           ; Reneration routine
+        RET
+NSPACE  ADD     HL,DE
+        DJNZ    TCTRLP
+        RET
+
+;********** Regeneration of traffic **********
+; Input: HL => DB pairs
+
+REGEN   PUSH    HL
+RAND1   CALL    RANDNO          ; Random number routine
+        AND     7               ; Generate random number
+        CP      6               ; From 0 to 5
+        JR      NC,RAND1
+        LD      BC,5921H        ; Two char test
+        LD      HL,5920H        ; Test jam
+        BIT     0,A             ; Odd number is left
+        JR      Z,RTRAF         ; Right traffic
+        LD      L,0DFH
+        LD      C,0DEH
+RTRAF   ADD     A,A             ; Get DBINDEX ptr in de
+        LD      E,A
+        LD      A,(BC)          ; Test 2 char ahead
+        ADD     A,(HL)
+        AND     A               ; Zero paper, zero ink
+        JR      Z,LOADDB        ; If 0, initialize new obj
+        POP     HL              ; If jam, return
+        RET
+LOADDB  LD      D,A             ; A=0
+        LD      HL,DBINDEX      ; Get db
+        ADD     HL,DE
+        LD      E,(HL)          ; Get corr database
+        INC     HL
+        LD      D,(HL)
+        EX      DE,HL           ; Source
+        POP     DE              ; Destination
+        LD      BC,12
+        LDIR
+        LD      A,2             ; Set regeneration flag
+        LD      (GENFLG),A      ; Skip for 2 cycles
+        RET
+
+;********** Move traffic routine **********
+
+MOVTRF  EXX
+        LD      HL,OB1EXT
+        LD      DE,12
+        LD      B,6
+MTRFLP  PUSH    HL
+        EXX
+        POP     HL              ; Existence
+        LD      A,(HL)          ; Skip when no exist
+        AND     A
+        JP      Z,NXTMOV
+        INC     HL              ; Cycle count
+        DEC     (HL)            ; Decrement cycle count
+        JP      NZ,NXTMOV
+        INC     HL              ; Direction
+        LD      A,(HL)          ; 0 L to R, 1 R to L
+        INC     HL
+        INC     HL
+        LD      (POSPTR),HL     ; Position pointer
+        LD      E,(HL)          ; Restore position
+        INC     HL
+        LD      D,(HL)
+        INC     E               ; Move right
+        AND     A
+        JR      Z,LDPOS
+        DEC     E               ; Move left
+        DEC     E               ; Move left
+LDPOS   LD      (NEWPOS),DE
+        EX      AF,AF'
+        LD      BC,5            ; Restore object length
+        ADD     HL,BC
+        LD      A,(HL)          ; Row
+        LD      (ROW),A
+        INC     HL
+        LD      A,(HL)          ; Column
+        LD      (COLUMN),A
+        DEC     A
+        LD      C,A
+        EX      AF,AF'
+        AND     A               ; Test direction
+        EX      DE,HL
+        JR      NZ,RTOL         ; Right to left
+        ADD     HL,BC           ; Find head of truck
+        LD      A,L             ; Lob
+        CP      40H             ; Test right edge
+        JR      NC,MOVEOK       ; Skip test ahead if off
+        JR      TESTAH          ; Test ahead
+RTOL    LD      A,L             ; New pos, ahead as well
+        CP      0C0H            ; Test left edge
+        JR      C,MOVEOK        ; Skip test ahead
+TESTAH  LD      A,H             ; Convert to attribute
+        AND     18H
+        SRA     A
+        SRA     A
+        SRA     A
+        ADD     A,58H
+        LD      H,A
+        LD      BC,32
+        XOR     A
+        LD      (JAMFLG),A      ; Initialize jam flag
+        LD      A,(ROW)
+TAHLOP  EX      AF,AF'
+        LD      A,(HL)          ; Retrieve attribute
+        AND     7
+        JR      Z,TFROG1        ; Jump if black ink
+        CP      4               ; Test for green frog
+        JR      NZ,JAM1         ; Jam if not a frog
+        LD      A,1             ; Move if it is frog
+        LD      (CRHFLG),A      ; Set frog crash
+        JR      TFROG1
+JAM1    LD      (JAMFLG),A      ; Set jam flag nonzero
+TFROG1  AND     A
+        SBC     HL,BC
+        EX      AF,AF'
+        DEC     A               ; Update row
+        JR      NZ,TAHLOP
+        LD      A,(JAMFLG)      ; Test traffic jam
+        AND     A
+        JR      Z,MOVEOK        ; Move if no jam
+        EXX                     ; Else stop move one cycle
+        INC     HL
+        INC     (HL)            ; Load 2 cycle count
+        INC     (HL)
+        DEC     HL
+        EXX
+        JR      NXTMOV
+MOVEOK  LD      HL,(POSPTR)     ; Retrieve pointer to position
+        LD      DE,(NEWPOS)
+        LD      (HL),E          ; Store newpos in db
+        INC     HL
+        LD      (HL),D
+        CALL    MVCTRL          ; Movement control
+NXTMOV  EXX
+        ADD     HL,DE
+        DEC     B
+        JP      NZ,MTRFLP
+        EXX
+        RET
+
+;*********** Traffic movement control routine **********
+MVCTRL  DEC     HL
+        DEC     HL              ; DE=>newpos, HL=>DB ptr
+        LD      A,E             ; Lob pos
+        AND     1FH             ; Test edge
+        JR      NZ,CHGRAF       ; Change real abs flag
+        LD      A,(HL)
+        INC     A
+        AND     1
+        LD      (HL),A
+CHGRAF  DEC     HL              ; PT dir
+        LD      A,(HL)
+        AND     A
+        JR      NZ,TOLEFT       ; Right to left
+        LD      A,E
+        AND     1FH             ; If to right and abs
+        JR      NZ,DRWOBJ
+        INC     HL              ; Get raf
+        LD      A,(HL)
+        DEC     HL              ; PT to dir
+        AND     A               ; If abstract, dies
+        JR      NZ,DRWOBJ
+        EXX
+        LD      (HL),A          ; Set nonexistance
+        EXX
+        RET
+TOLEFT  LD      A,(COLUMN)
+        LD      C,A
+        EX      DE,HL           ; Test end of object
+        ADD     HL,BC           ; Touches left edge
+        LD      A,L
+        CP      0C0H
+        EX      DE,HL
+        JR      NZ,DRWOBJ
+        EXX                     ; Object nonexistant as
+        LD      (HL),0          ; it moves off screen
+        EXX
+        RET
+DRWOBJ  EXX
+        LD      A,(HL)
+        INC     HL
+        LD      (HL),A          ; Refill cycle count
+        DEC     HL
+        EXX
+        INC     HL
+        PUSH    HL              ; PT to raf
+        INC     HL
+        INC     HL
+        INC     HL
+        LD      E,(HL)          ; Retrieve shape pointer
+        INC     HL
+        LD      D,(HL)
+        INC     HL
+        LD      C,(HL)          ; Retrieve attr pointer
+        INC     HL
+        LD      B,(HL)
+        LD      (ATTPTR),BC
+        INC     HL
+        LD      A,(HL)
+        LD      (ROW),A
+        INC     HL
+        LD      A,(HL)
+        LD      (COLUMN),A
+        POP     HL
+        LD      A,(HL)          ; Raflag
+        LD      HL,(NEWPOS)
+        CALL    DRAW
+        RET
+        
+;********** Draw routine **********
+; Input: HL - Start of display pos
+;        DE - Pointer to shape db;
+;        A  - Position real/abstract flag
+;        C  - No. of color to be displayed
+;        COL pass as var
+;
+; Var:   COLUMN, ROW, ATTR, DRWPOS, SKIP, FILL
+;
+; Reg:   A,BC,DE,HL,A'
+;
+
+DRAW    CALL    RSHAPE          ; Return row/col attptr
+        LD      A,(ROW)
+        EX      AF,AF'
+LP0     PUSH    DE
+        PUSH    HL              ; Store line pointer
+        LD      A,(SKIP)
+        LD      C,A
+        LD      B,0
+        ADD     HL,BC           ; Skip position pointer
+        ADD     A,A             ; Multiple of 8 bytes
+        ADD     A,A
+        ADD     A,A
+        LD      C,A             ; Skip shape pointer
+        EX      DE,HL
+        ADD     HL,BC
+        EX      DE,HL
+        BIT     0,H             ; Cross screen section?
+        JR      Z,NOSKIP
+        LD      A,7             ; If yes, move up
+        ADD     A,H
+        LD      H,A
+NOSKIP  LD      A,(FILL)
+        AND     A
+        JR      Z,NXT
+        LD      C,A             ; Column to be filled
+LP1     PUSH    HL              ; Fill character
+        LD      B,8
+LP2     LD      A,(DE)          ; Fill character bytes
+        LD      (HL),A
+        INC     DE
+        INC     H
+        DJNZ    LP2
+        POP     HL
+        DEC     C
+        JR      Z,NXT
+        INC     HL              ; Next character
+        JR      LP1
+NXT     EX      AF,AF'
+        POP     HL              ; Restore line pointer
+        POP     DE              ; Shape DB pointer
+        DEC     A               ; Update row count
+        JR      Z,LDATTR
+        EX      AF,AF'
+        AND     A               ; Clear carry
+        LD      C,20H
+        SBC     HL,BC           ; One line up
+        BIT     0,H             ; Cross screen section?
+        JR      Z,MODDB
+        LD      A,H
+        SUB     7
+        LD      H,A
+MODDB   LD      A,(COLUMN)
+        ADD     A,A
+        ADD     A,A
+        ADD     A,A             ; Update shape db
+        LD      C,A
+        EX      DE,HL
+        ADD     HL,BC
+        EX      DE,HL
+        JR      LP0
+LDATTR  LD      HL,(ATTPOS)
+        LD      DE,(ATTPTR)
+        LD      A,(ROW)
+ATROW   EX      AF,AF'
+        PUSH    DE
+        PUSH    HL
+        LD      A,(SKIP)
+        LD      C,A
+        LD      B,0
+        ADD     HL,BC           ; Skip attribute file
+        EX      DE,HL
+        ADD     HL,BC           ; Skip attribute database
+        EX      DE,HL
+        LD      A,(FILL)
+        AND     A
+        JR      Z,SKIPAT        ; Skip attribute
+        LD      B,A             ; Fill attributes
+ATTR2   LD      A,(DE)
+        LD      (HL),A
+        INC     HL
+        INC     DE
+        DJNZ    ATTR2
+SKIPAT  POP     HL
+        POP     DE
+        LD      A,(COLUMN)
+        AND     A               ; Clear carry
+        LD      C,20H
+        SBC     HL,BC           ; Next attribute line up
+        LD      C,A
+        EX      DE,HL
+        ADD     HL,BC           ; Update attribute db
+        EX      DE,HL
+        EX      AF,AF'
+        DEC     A
+        JR      NZ,ATROW
+        RET
+
+;********** RSHAPE **********
+;
+;  Input:  HL=>Position
+;          A =>Real/abstract flag
+;          DE=>Shape pointer
+;          COLUMN
+;
+;  Output: SKIP, FILL, ATTPOS
+
+RSHAPE  PUSH    HL
+        EX      AF,AF'          ; Real shape
+        LD      H,1FH
+        LD      A,H
+        AND     L               ; Trap lower 5 bits
+        LD      L,A
+        LD      A,H
+        SUB     L               ; Subtract from 1FH
+        INC     A
+        AND     H               ; Adjust for zero diff
+        LD      L,A
+        EX      AF,AF'
+        AND     A               ; 0=>abstract, 1=>real
+        LD      A,(COLUMN)
+        JR      NZ,REAL
+        SUB     L
+        LD      (FILL),A
+        LD      A,L             ; Reload abs diff
+        LD      (SKIP),A
+        JR      CALATT
+REAL    CP      L               ; Take min of col/fill
+        JR      C,TOOBIG        ; Fill more than col
+        LD      A,L
+        AND     A
+        JR      NZ,TOOBIG
+        LD      A,(COLUMN)
+TOOBIG  LD      (FILL),A
+        XOR     A
+        LD      (SKIP),A
+CALATT  POP     HL              ; Calculate att pointer
+        PUSH    HL
+        LD      A,H
+        AND     18H
+        SRA     A
+        SRA     A
+        SRA     A
+        ADD     A,58H
+        LD      H,A
+        LD      (ATTPOS),HL
+        POP     HL
+        RET
+
+;********** Clear Screen Routine **********
+
+CLRSCR  LD      HL,4000H        ; HL - Start of screen
+        LD      DE,4001H
+        LD      BC,6143         ; Size of screen 17FFH
+        XOR     A               ; Blank screen
+        LD      (HL),A
+        LDIR
+        LD      HL,5800H        ; Set first line for score
+        LD      DE,5801H        ; Of attribute file
+        LD      BC,31
+        LD      (HL),7          ; Ink seven
+        LDIR
+        LD      HL,5820H        ; Set attribute
+        LD      DE,5821H        ; Start from second line
+        LD      BC,735
+        LD      (HL),A          ; (Paper 0)*8 + (Ink 0)
+        LDIR
+        LD      HL,58A0H        ; Set highway
+        LD      DE,5920H        ; High, middle, bottom
+        LD      BC,5A20H
+        LD      A,56            ; (Paper 7)*8 + (Ink 0)
+        EXX
+        LD      B,32            ; Fill one line
+HWYATT  EXX
+        LD      (HL),A
+        LD      (DE),A
+        LD      (BC),A
+        INC     HL
+        INC     DE
+        INC     BC
+        EXX
+        DJNZ    HWYATT
+        EXX
+        RET
+
+SHAPE   PUSH    HL              ; Save HL pointer
+        LD      A,(FRGDIR)
+        ADD     A,A
+        LD      HL,FRGSHP
+        LD      D,0
+        LD      E,A
+        ADD     HL,DE           ; Pointer to pos of shape
+        LD      E,(HL)          ; DE return shape pointer
+        INC     HL
+        LD      D,(HL)
+        POP     HL
+        RET
+
+;*********** Display ASCII **********
+; Display ASCII from character set
+; NB:---- Store DE, the message pointer
+;         HL stays the same after display
+;         used BC register as well
+
+DISASC  PUSH    BC
+        PUSH    DE
+        PUSH    HL
+        LD      A,(DE)          ; Load ASCII character
+        LD      L,A
+        LD      H,0
+        ADD     HL,HL           ; Multiple of 8 bytes
+        ADD     HL,HL
+        ADD     HL,HL
+        EX      DE,HL
+        LD      HL,CHRSET       ; Start of character set
+        ADD     HL,DE
+        EX      DE,HL
+        POP     HL
+DRWCHR  LD      B,8             ; Draw character
+        PUSH    HL
+CHARLP  LD      A,(DE)
+        LD      (HL),A
+        INC     DE
+        INC     H
+        DJNZ    CHARLP
+        POP     HL
+        POP     DE
+        INC     HL              ; Position pointer
+        INC     DE              ; Message pointer
+        POP     BC
+        DJNZ    DISASC
+        RET
+
+;********** Police car routine *********
+
+POLICE  EXX
+        LD      HL,PCAREXT
+        LD      A,(HL)          ; Test police car exists
+        PUSH    HL
+        EXX
+        AND     A
+        JR      NZ,MOVPC        ; Move police car
+        POP     DE              ; DB ext pointer
+        CALL    RANDNO          ; Move when multiple of
+        AND     1FH             ; 31
+        CP      1FH
+        RET     NZ
+        LD      A,1             ; Set chase flag
+        LD      (CHASE),A
+        LD      HL,RPCDB        ; Right PC
+        CALL    RANDNO
+        AND     1
+        JR      Z,RHTPC
+        LD      HL,LPCDB
+RHTPC   LD      BC,12
+        LDIR
+        EXX
+        PUSH    HL
+        EXX
+MOVPC   POP     HL              ; Existence pointer
+        INC     HL
+        INC     HL              ; Direction
+        LD      A,(HL)
+        LD      B,A             ; Store direction
+        INC     HL
+        INC     HL              ; Position pointer
+        LD      (POSPTR),HL
+        LD      E,(HL)
+        INC     HL
+        LD      D,(HL)
+        INC     E               ; Assume move right
+        AND     A
+        JR      Z,PCMRHT        ; Police car move right
+        DEC     E
+        DEC     E
+PCMRHT  LD      (NEWPOS),DE
+        LD      A,2             ; Two rows
+        LD      (ROW),A
+        LD      A,6
+        LD      (COLUMN),A
+        PUSH    BC              ; Direction
+        LD      A,(PCARRAP)     ; Real/abs flag
+        EX      DE,HL
+        CALL    RSHAPE          ; Ret skip/fill,attr
+        LD      HL,(ATTPOS)
+        POP     AF
+        AND     A               ; If 1, OK
+        JR      NZ,PCTAH        ; Police car test ahead
+        LD      BC,5
+        ADD     HL,BC
+PCTAH   LD      A,(HL)
+        AND     7
+        LD      BC,32
+        AND     A
+        SBC     HL,BC
+        CP      4
+        JR      Z,ISFRG2
+        LD      A,(HL)
+        AND     7
+        CP      4
+        JR      NZ,NFROG2
+ISFRG2  LD      A,1
+        LD      (CRHFLG),A      ; Set crash flag
+        DEC     A               ; Blank color
+        LD      (HL),A          ; Blank front of PC
+        ADD     HL,BC
+        LD      (HL),A          ; ** Should blank front **
+NFROG2  CALL    STRPC           ; Store new underneath
+        LD      HL,(POSPTR)
+        LD      DE,(NEWPOS)
+        LD      (HL),E
+        INC     HL
+        LD      (HL),D
+        CALL    MVCTRL
+        EXX                     ; If non-existant
+        LD      A,(HL)
+        LD      (CHASE),A
+        EXX
+        RET
+
+;********** STRPC **********
+; Store underneath police car
+
+STRPC   LD      HL,(NEWPOS)     ; Position pointer
+        LD      DE,PCSTR        ; Storage location
+        EX      DE,HL
+        LD      (HL),E          ; Store position
+        INC     HL
+        LD      (HL),D
+        INC     HL
+        EX      DE,HL
+        LD      HL,ROW          ; Load 5 bytes of info
+        LD      A,(HL)
+        LD      BC,5
+        LDIR
+        EX      AF,AF'
+        LD      HL,(NEWPOS)
+SPCLP1  PUSH    HL
+        LD      A,(SKIP)
+        LD      C,A
+        ADD     HL,BC
+        BIT     0,H
+        JR      Z,NSSPS
+        LD      A,H
+        ADD     A,7
+        LD      H,A
+NSSPS   LD      A,(FILL)
+        AND     A
+        JR      Z,NXTSPC
+        LD      C,A
+SPCLP2  PUSH    HL              ; Restore character
+        LD      B,8
+SPCLP3  LD      A,(HL)          ; Store screen first
+        LD      (DE),A
+        INC     DE
+        INC     H
+        DJNZ    SPCLP3
+        POP     HL
+        INC     HL              ; Next character
+        DEC     C
+        JR      NZ,SPCLP2
+NXTSPC  POP     HL
+        EX      AF,AF'          ; Update row count
+        DEC     A
+        JR      Z,SPCATR        ; Restore police attr
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC           ; Up one line
+        BIT     0,H             ; Cross screen section?
+        JR      Z,SPCLP1
+        LD      A,H
+        SUB     7
+        LD      H,A
+        JR      SPCLP1
+SPCATR  LD      HL,(ATTPOS)     ; Attribute start position
+        LD      A,(ROW)
+        EX      AF,AF'
+SPCAT1  PUSH    HL
+        LD      A,(SKIP)
+        LD      C,A
+        ADD     HL,BC
+        LD      A,(FILL)
+        AND     A
+        JR      Z,NXTSPA
+        LD      C,A
+        LDIR
+NXTSPA  POP     HL
+        EX      AF,AF'
+        DEC     A
+        RET     Z
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC
+        JR      SPCAT1
+
+RESPC   LD      A,(PCAREXT)     ; Test PC exist
+        AND     A
+        RET     Z
+        LD      DE,ROW
+        LD      HL,PCSTR+2
+        LD      BC,5
+        LDIR                    ; Retrieve 5 info
+        EX      DE,HL           ; DE storage pointer
+        LD      HL,(PCSTR)      ; Load position
+        LD      A,(ROW)
+        EX      AF,AF'
+RPCLP1  PUSH    HL              ; Save position
+        LD      A,(SKIP)
+        LD      C,A
+        ADD     HL,BC
+        BIT     0,H
+        JR      Z,NSRPS
+        LD      A,7
+        ADD     A,H
+        LD      H,A
+NSRPS   LD      A,(FILL)
+        AND     A
+        JR      Z,NXTRPC
+        LD      C,A
+RPCLP2  PUSH    HL
+        LD      B,8
+RPCLP3  LD      A,(DE)          ; Restore character
+        LD      (HL),A
+        INC     DE
+        INC     H
+        DJNZ    RPCLP3
+        POP     HL
+        INC     HL
+        DEC     C
+        JR      NZ,RPCLP2
+NXTRPC  POP     HL
+        EX      AF,AF'
+        DEC     A               ; Update row count
+        JR      Z,RPCATR        ; Restore police car
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC           ; Move up one line
+        BIT     0,H
+        JR      Z,RPCLP1
+        LD      A,H
+        SUB     7               ; Cross boundary
+        LD      H,A
+        JR      RPCLP1
+RPCATR  LD      HL,(ATTPOS)     ; Attr start loading pos
+        LD      A,(ROW)
+        EX      AF,AF'
+RPCAT1  PUSH    HL
+        LD      A,(SKIP)
+        LD      C,A
+        ADD     HL,BC
+        LD      A,(FILL)
+        AND     A
+        JR      Z,NXTRPA
+        EX      DE,HL
+        LD      C,A
+        LDIR
+        EX      DE,HL
+NXTRPA  POP     HL
+        EX      AF,AF'
+        DEC     A
+        RET     Z
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC
+        JR      RPCAT1
+
+FROG    LD      A,(CRHFLG)      ; Crash flag
+        AND     A
+        JR      NZ,FRGCRH       ; Frog crash
+        LD      (UPDWN),A       ; Set no score
+        CALL    REGFRG          ; Regenerate frog
+        LD      HL,FRGCYC       ; Test move
+        DEC     (HL)
+        RET     NZ
+        DEC     HL
+        LD      A,(HL)          ; Reset cycle count
+        INC     HL
+        LD      (HL),A
+        CALL    MOVFRG
+        LD      A,(CRHFLG)
+        AND     A
+        RET     Z
+FRGCRH  CALL    CRASH
+        RET
+
+;*********** REGFRG **********
+; Regenerate frog if any left
+; Set GAMFLG to 0 if none left
+
+REGFRG  LD      A,(FRGEXT)
+        AND     A
+        RET     NZ              ; Return if exist
+        LD      HL,FRGDB
+        LD      DE,FRGEXT
+        LD      BC,8
+        LDIR
+        LD      HL,FRGSTN       ; Update frog station
+        DEC     (HL)
+        DEC     (HL)
+        DEC     (HL)
+        LD      HL,(FRGPOS)
+        LD      (OLDFRG),HL
+        LD      (NEWFRG),HL
+        LD      HL,FRGSTR       ; Init frog str for res
+        LD      DE,FRGSTR+1     ; Blank frog store
+        LD      BC,35
+        LD      (HL),0
+        LDIR
+        RET
+
+;********** MOVFRG **********
+; Move frog, store and restore
+
+MOVFRG  XOR     A
+        LD      HL,0E020H       ; H=-32, L=32                   Is this okay???
+        LD      C,A             ; C=> Absolute movement
+        EX      AF,AF'
+        LD      A,0DFH          ; Test right
+        IN      A,(0FEH)
+        AND     1
+        JR      NZ,LEFT
+        INC     C
+        LD      DE,FROG2
+        LD      B,1
+LEFT    LD      A,0DFH          ; Test left
+        IN      A,(0FEH)
+        AND     4
+        JR      NZ,DOWN
+        DEC     C
+        LD      DE,FROG4
+        LD      B,3
+DOWN    LD      A,0DDH          ; Test down
+        IN      A,(0FEH)
+        AND     1
+        JR      NZ,UP
+        LD      A,C
+        ADD     A,L             ; Add 32
+        LD      C,A
+        EX      AF,AF'
+        DEC     A
+        EX      AF,AF'          ; Dec Up/down flag
+        LD      DE,FROG3
+        LD      B,2
+UP      LD      A,0F7H          ; Test up
+        IN      A,(0FEH)
+        AND     1
+        JR      NZ,VALID
+        LD      A,C
+        ADD     A,H             ; Add -32
+        LD      C,A
+        EX      AF,AF'
+        INC     A
+        EX      AF,AF'
+        LD      DE,FROG1
+        LD      B,0
+VALID   LD      A,B             ; Store temp dir
+        LD      (TEMDIR),A
+        LD      (TEMSHP),DE     ; Store temp shape
+        XOR     A
+        CP      C
+        RET     Z               ; If no move go back
+        LD      HL,(OLDFRG)
+        BIT     7,C             ; Test -VE
+        LD      B,A
+        LD      E,7             ; For boundary adj
+        JR      Z,NETDWN        ; Net move right, down
+        DEC     B
+        LD      E,-7
+NETDWN  ADD     HL,BC
+        BIT     0,H
+        JR      Z,VALID1        ; No cross boundary
+        LD      A,H
+        ADD     A,E
+        LD      H,A             ; Adj hob
+VALID1  LD      (TEMPOS),HL
+        EX      DE,HL
+        LD      A,40H         ; Test upscr
+        CP      D
+        LD      A,E
+        JR      NZ,VALID2
+        CP      20H
+        JR      C,NVALID
+VALID2  AND     1FH             ; Test right boundary
+        CP      1FH
+        JR      Z,NVALID
+        LD      HL,50BEH        ; Test bot boundary
+        AND     A
+        SBC     HL,DE
+        JR      C,NVALID
+        LD      HL,507EH        ; Test frog station
+        SBC     HL,DE
+        JR      NC,YVALID
+        LD      A,E             ; Test within box
+        AND     1FH
+        LD      H,A
+        LD      A,(FRGSTN)
+        CP      0A0H            ; Test last frog
+        JR      C,YVALID        ; No more frog station
+        INC     A               ; When no frog left
+        AND     1FH
+        SUB     H
+        JR      NC,NVALID
+YVALID  LD      (NEWFRG),DE     ; Store new pos
+        EX      AF,AF'
+        LD      (UPDWN),A
+        EX      AF,AF'
+NVALID  LD      HL,(OLDFRG)     ; Test OLDFRG=NEWFRG
+        AND     A
+        SBC     HL,DE
+        LD      A,L
+        OR      H
+        RET     Z               ; Return if same
+        CALL    RESFRG          ; Restore frog
+        LD      HL,(NEWFRG)     ; Update old frog pos
+        LD      (OLDFRG),HL
+        LD      HL,TEMDIR
+        LD      DE,FRGDIR
+        LD      BC,5
+        LDIR
+        CALL    STRFRG
+        RET
+
+;********** Resurrect frog **********
+
+RESFRG  LD      DE,FRGSTR       ; Storage pointer
+        LD      HL,(OLDFRG)     ; Restore from OLDFRG
+        PUSH    HL
+        LD      A,2             ; Row counter
+        EX      AF,AF'
+RFRLP1  PUSH    HL
+        LD      C,2             ; Column counter
+RFRLP2  PUSH    HL
+        LD      B,8
+RFRLP3  LD      A,(DE)          ; Restore from db
+        LD      (HL),A          ; Onto screen
+        INC     DE
+        INC     H               ; Next char byte
+        DJNZ    RFRLP3
+        POP     HL
+        INC     HL
+        DEC     C               ; Column count
+        JR      NZ,RFRLP2
+        POP     HL
+        EX      AF,AF'
+        DEC     A               ; Row count
+        JR      Z,RFRATR
+        EX      AF,AF'
+        AND     A
+        LD      C,32            ; Up one line
+        SBC     HL,BC
+        BIT     0,H
+        JR      Z,RFRLP1
+        LD      A,H
+        SUB     7
+        LD      H,A
+        JR      RFRLP1
+RFRATR  POP     HL
+        LD      A,H
+        AND     18H
+        SRA     A
+        SRA     A
+        SRA     A
+        ADD     A,58H
+        LD      H,A
+        LD      A,2             ; Row counter
+        EX      AF,AF'
+RFRAT1  PUSH    HL
+        EX      DE,HL
+        LD      C,2             ; Restore attr
+        LDIR
+        EX      DE,HL
+        POP     HL
+        EX      AF,AF'
+        DEC     A               ; Update row counter
+        RET     Z
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC
+        JR      RFRAT1
+
+;********** STRFRG ***********
+
+STRFRG  LD      DE,FRGSTR
+        LD      HL,(NEWFRG)     ; Store base on NEWPOS
+        EXX
+        LD      HL,(FROGSH)     ; Load shape as well
+        EXX
+        PUSH    HL
+        LD      A,2
+        EX      AF,AF'
+SFRLP1  PUSH    HL
+        LD      C,2
+SFRLP2  PUSH    HL
+        LD      B,8             ; Store and load a char
+SFRLP3  LD      A,(HL)
+        LD      (DE),A
+        EXX
+        LD      A,(HL)
+        INC     HL
+        EXX
+        LD      (HL),A
+        INC     DE
+        INC     H
+        DJNZ    SFRLP3
+        POP     HL
+        INC     HL              ; Next character
+        DEC     C
+        JR      NZ,SFRLP2
+        POP     HL
+        EX      AF,AF'
+        DEC     A
+        JR      Z,SFRATR
+        EX      AF,AF'
+        AND     A
+        LD      C,32
+        SBC     HL,BC           ; Next row
+        BIT     0,H
+        JR      Z,SFRLP1
+        LD      A,H
+        SUB     7
+        LD      H,A
+        JR      SFRLP1
+SFRATR  POP     HL
+        LD      A,H             ; Calculate attr pos
+        AND     18H
+        SRA     A
+        SRA     A
+        SRA     A
+        ADD     A,58H
+        LD      H,A
+        LD      A,2
+        EX      AF,AF'
+SFRAT1  LD      B,2
+        PUSH    HL
+SFRATLP LD      A,(HL)
+        LD      (DE),A
+        LD      (HL),4          ; Fill frog attr
+        INC     HL
+        INC     DE
+        AND     7               ; Test crash
+        JR      Z,NFROG3
+        LD      A,1
+        LD      (CRHFLG),A
+NFROG3  DJNZ    SFRATLP
+        POP     HL
+        EX      AF,AF'
+        DEC     A
+        RET     Z
+        EX      AF,AF'
+        LD      C,32
+        SBC     HL,BC
+        JR      SFRAT1
+
+;********** Crash routine **********
+
+CRASH   XOR     A
+        LD      (CRHFLG),A      ; Reset crash flag
+        LD      (FRGEXT),A      ; Set frog nonexist
+        CALL    FRGDIE
+        CALL    RESFRG
+        LD      HL,NUMFRG
+        DEC     (HL)            ; Decrease frog number
+        RET     NZ
+        LD      (GAMFLG),A      ; Zeroize game flag
+        RET                     ; when no frog left
+
+FRGDIE  LD      HL,(OLDFRG)     ; Old pos of frog
+        LD      BC,4002H        ; Red color
+        EXX
+        LD      HL,DIETON       ; Set die tone
+        EXX
+        LD      A,H             ; Test end of journey
+        CP      B
+        JR      NZ,NOTEND
+        LD      A,L
+        CP      B
+        JR      NC,NOTEND
+        LD      DE,SCORE+3      ; 100 pts bonus
+        EX      DE,HL
+        INC     (HL)
+        LD      HL,SCORE+4
+        CALL    DISSCR
+        LD      C,6             ; Yellow
+        EXX
+        LD      HL,HOMTON
+        EXX
+NOTEND  LD      A,C
+        LD      (ATTR),A
+        LD      HL,(OLDFRG)
+        LD      DE,(FROGSH)
+        CALL    DRWFRG
+        LD      DE,32           ; Line adjust
+        ADD     HL,DE
+        EX      AF,AF'
+        LD      A,(ATTR)
+        EX      AF,AF'
+        LD      B,5
+FLASLP  PUSH    BC
+        PUSH    HL              ; Attribute pointer
+        XOR     A               ; Black ink black paper
+        LD      (HL),A
+        INC     HL
+        LD      (HL),A
+        SBC     HL,DE
+        LD      (HL),A
+        DEC     HL
+        LD      (HL),A
+        CALL    FRGTON          ; Generate frog tone
+        POP     HL
+        PUSH    HL
+        EX      AF,AF'
+        LD      (HL),A          ; Black paper, red or
+        INC     HL              ; yellow ink
+        LD      (HL),A
+        AND     A
+        SBC     HL,DE
+        LD      (HL),A
+        DEC     HL
+        LD      (HL),A
+        EX      AF,AF'
+        CALL    FRGTON
+        POP     HL
+        POP     BC
+        DJNZ    FLASLP
+        RET
+
+;********** FRGTON **********
+
+FRGTON  EXX
+        PUSH    HL
+        CALL    TONE1
+        POP     HL
+        LD      BC,4            ; Move down database
+        EX      AF,AF'
+        CP      6
+        JR      Z,HOME
+        LD      BC,-4           ; Move up database
+HOME    ADD     HL,BC
+        EXX
+        EX      AF,AF'
+        RET
+
+CALSCR  LD      A,(FRGEXT)      ; Test existence
+        AND     A
+        RET     Z               ; No update of score
+        LD      A,(UPDWN)       ; Test up/down movement
+        AND     A               ; Test any score
+        RET     Z
+        LD      HL,SCORE+4      ; Add 10 to score
+        BIT     7,A             ; Test move down
+        JR      NZ,DWNSCR       ; Down score
+        INC     (HL)
+        JR      DISSCR          ; Dis score
+DWNSCR  LD      A,(OLDFRG+1)    ; Test hob
+        CP      40H             ; Test first block
+        JR      NZ,TLHWY        ; Test low highway
+        LD      A,(OLDFRG)
+        CP      0C0H            ; Not even step on hwy
+        RET     C
+        INC     (HL)
+        JR      DISSCR
+TLHWY   CP      50H             ; Test in low hwy
+        RET     NZ
+        LD      A,(OLDFRG)
+        CP      20H
+        RET     NC              ; No score if step hwy
+        INC     (HL)
+DISSCR  LD      B,4             ; HL => TENTH'S POS
+ADDLOP  LD      A,(HL)
+CRYLOP  CP      3AH             ; Carry loop
+        JR      C,UPDDIG        ; Update digit
+        SUB     10
+        DEC     HL
+        INC     (HL)            ; Carry
+        INC     HL
+        JR      CRYLOP
+UPDDIG  LD      (HL),A
+        DEC     HL
+        DJNZ    ADDLOP
+        LD      HL,SCORE+1
+        CALL    SCRIMG          ; Score image
+        LD      HL,4006H
+        LD      DE,IMAGE
+        LD      B,5
+        CALL    DISASC
+        RET
+
+SCRIMG  LD      DE,IMAGE
+        LD      BC,5
+        LDIR
+        LD      HL,IMAGE
+        LD      BC,0430H
+PREZER  LD      A,C
+        CP      (HL)            ; Test 30H
+        JR      NZ,PREZEX
+        LD      (HL),20H        ; Space fill
+        INC     HL
+        DJNZ    PREZER
+PREZEX  RET
+
+SIREN   LD      A,0BFH
+        IN      A,(0FEH)
+        AND     1
+        JR      NZ,NSOUND
+        LD      A,(SOUNDF)      ; Reset sound condition
+        INC     A
+        AND     1
+        LD      (SOUNDF),A
+NSOUND  LD      A,(SOUNDF)
+        AND     A
+        JR      Z,DELAY
+        LD      A,(CHASE)       ; Is police car on
+        AND     A
+        JR      Z,DELAY
+        LD      A,(TONFLG)
+        INC     A
+        AND     1
+        LD      (TONFLG),A
+        LD      HL,PCTON1
+        JR      Z,TONE1
+        LD      HL,PCTON2
+TONE1   LD      E,(HL)          ; DE=duration*frequency
+        INC     HL
+        LD      D,(HL)
+        INC     HL
+        LD      C,(HL)
+        INC     HL
+        LD      B,(HL)
+        PUSH    BC
+        POP     HL              ; HL=437500/freq-30.125
+        CALL    03B5H
+        DI                      ; 03B5H enable interrupt
+        RET
+DELAY   LD      BC,6144
+WAIT    DEC     BC
+        LD      A,B
+        OR      C
+        JR      NZ,WAIT
+        RET
+
+;********** Random number routine **********
+
+RANDNO  PUSH    HL
+        PUSH    BC
+        LD      HL,(RND)
+        LD      B,(HL)
+        INC     HL
+        LD      A,3FH           ; Bound pointer within ROM
+        AND     H
+        LD      H,A
+        LD      A,B
+        LD      (RND),HL
+        POP     BC
+        POP     HL
+        RET
+
+OVER    LD      HL,SCORE+1      ; High score manage
+        LD      DE,HISCR
+        LD      B,5
+SORTLP  LD      A,(DE)
+        CP      (HL)
+        JR      Z,SAMSCR        ; Test 1st NE digit
+        RET     NC
+        JR      SCRGT           ; Update high score
+SAMSCR  INC     DE
+        INC     HL
+        DJNZ    SORTLP
+        RET
+SCRGT   LD      HL,SCORE+1
+        LD      DE,HISCR
+        LD      BC,5
+        LDIR
+        RET
+
+;********** Final routine **********
+
+FINAL   LD      A,56            ; Set white border
+        LD      (23624),A
+        LD      HL,4000H        ; Start of screen
+        LD      DE,4001H
+        LD      BC,6143         ; Size of screen
+        LD      (HL),0
+        LDIR
+        LD      HL,5800H        ; Start of attribute file
+        LD      DE,5801H
+        LD      BC,767
+        LD      (HL),56         ; White paper black ink
+        LDIR
+        RET
+
+        ; END     START
+
+        SAVESNA "freeway.sna",START

@@ -29,18 +29,30 @@ connect4 - A connect 4 game written in Z80 assembler.
 
 This is me stumbling around figuring this Z80 assembly stuff out.
 
-screen   - basic write-to-screen memory routine with bitshifting.
-charscr  - write screen memory character-by-character with bitshifting.
-colorscr - character screen writing with colorization routine.
-fastscr  - color screen writing routine with fast screen reset using stack.
-rollscr  - color screen writing routine alternating fill and empty routines.
+- screen   - basic write-to-screen memory routine with bitshifting.
+- charscr  - write screen memory character-by-character with bitshifting.
+- colorscr - character screen writing with colorization routine.
+- fastscr  - color screen writing routine with fast screen reset using stack.
+- rollscr  - color screen writing routine alternating fill and empty routines.
 
-### others folder
+### contrib folder
 
 A folder for other people's assembly code I'm testing or learning from.
 
-connect4 - based on [Darryl Sloan's Z80 assembly YouTube tutorials](https://www.youtube.com/watch?v=1gHlMpO8gqw&list=PLsoYifahFi520wLrXiSIHv4HJbxPnZVxh)
-knights  - Knights by Darryl Sloan (from [World of Spectrum](https://worldofspectrum.net/item/0032308/))
-freeway  - Freeway Frog - Frogger clone from the book
+Everything in this folder is copyrighted and shared by their respective authors.
+
+- connect4 - based on [Darryl Sloan's Z80 assembly YouTube tutorials](https://www.youtube.com/watch?v=1gHlMpO8gqw&list=PLsoYifahFi520wLrXiSIHv4HJbxPnZVxh)
+- knights  - Knights by Darryl Sloan (from [World of Spectrum](https://worldofspectrum.net/item/0032308/))
+- freeway  - Freeway Frog - Frogger clone from the book
            Spectrum Machine Language for the Absolute Beginner
            Melbourne House Publishers, edited by William Tang
+
+### library folder
+
+A folder for all Sinclair documentation I've found and use.
+
+Everything in this folder is copyrighted and shared by their respective authors.
+
+- ZX Spectrum Next Online Manual - [www.specnext.com](https://www.specnext.com/zx-spectrum-next-user-manual-first-edition/)
+- How to Write Spectrum Games - [Jonathan Cauldwell](https://jonathan-cauldwell.itch.io/how-to-write-spectrum-games)(Donations accepted)
+- The Complete Spectrum ROM Disassembly - [primrosebank.net](http://primrosebank.net/computers/zxspectrum/zxspectrum.htm)

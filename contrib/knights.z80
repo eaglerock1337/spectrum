@@ -1,0 +1,1582 @@
+; KNIGHTS by Darryl Sloan, 16 May 2018
+
+	org 43000
+
+; external data: music stored at 50000, picture stored at 50700
+
+lastk	equ 23560
+
+start	ld a, 0		; border black
+	call 8859
+	ld a, 2		; open upper screen
+	call 5633
+	ld a, 8		; caps lock on
+	ld (23658), a
+
+; display background pic
+	ld hl, 50700
+	ld de, 16384
+	ld bc, 6912
+	ldir
+
+; set up udgs
+	ld hl, udgs
+	ld (23675), hl	
+
+; intro
+	ld de, intro1
+	ld bc, eointr1-intro1
+	call prtmsg	
+	ld de, intro2
+	ld bc, eointr2-intro2
+	call prtmsg
+	ld de, intro3
+	ld bc, eointr3-intro3
+	call prtmsg
+	ld de, intro4
+	ld bc, eointr4-intro4
+	call prtmsg
+codeent	ld de, intro5
+	ld bc, eointr5-intro5
+	call 8252
+
+
+; ENTER PASSCODE
+; player inputs passcode
+	ld de, curspos		; set print position
+	ld bc, eocursp-curspos
+	call 8252
+; loop 4 times for 4 digits
+	ld b, 4
+inploop push bc
+	ld de, curflas		; print cursor
+	ld bc, eocurfl-curflas
+	call 8252
+	ld de, curspos		; retrace 1 step (to allow cursor overwrite)
+	ld bc, eocursp-curspos
+	call 8252
+; scan for keypress
+	ld hl, lastk	; clear last keypress
+	ld (hl), 0
+pause	xor a		; clear carry flag
+	ld a, (lastk)
+	cp 65		; if keypress < "A", repeat
+	jr c, pause
+	cp 91		; if keypress > "Z", repeat
+	jr nc, pause
+; print keypress
+	rst 16
+; store keypress in pcode
+	ld hl, pcode
+ksloop	ld a, (hl)	; scan through pcode until empty slot found
+	cp 0	
+	jr z, kstore
+	inc hl
+	jr ksloop
+kstore	ld a, (lastk)
+	ld (hl), a
+; shift cursor position right by 1
+	ld a, (curspos+4)
+	inc a
+	ld (curspos+4), a
+	pop bc
+	djnz inploop	; repeat until 4 digits entered
+
+
+; LOCATE DESIRED LEVEL
+; copy currently scanned data into lcode
+cpcode	ld hl, (levres)
+	inc hl
+	ld de, lcode
+	ld bc, 4
+	ldir
+; compare pcode with lcode
+	ld a, (lcode)	
+	ld d, a
+	ld a, (pcode)
+	cp d
+	jr nz, nextlev
+	ld a, (lcode+1)
+	ld d, a
+	ld a, (pcode+1)
+	cp d
+	jr nz, nextlev
+	ld a, (lcode+2)
+	ld d, a
+	ld a, (pcode+2)
+	cp d
+	jr nz, nextlev
+	ld a, (lcode+3)
+	ld d, a
+	ld a, (pcode+3)
+	cp d
+	jr nz, nextlev
+	jr setuplv	; code accepted, jump to setupbg
+	djnz cpcode
+; scan forward until next 0 marker in data
+nextlev	ld hl, (levres)
+scanfwd	inc hl		
+	ld a, (hl)	
+	cp 255		; end of data marker met, error in player's code entry
+	jr z, codeerr
+	cp 0
+	jr nz, scanfwd
+	ld (levres), hl ; store new data restore point
+	ld a, (level)	; increase level count
+	inc a
+	ld (level), a		
+	jr cpcode	; jump back to scan new level code
+; when user enters a wrong code
+codeerr	ld a, 1		; reset level variables
+	ld (level), a
+	ld hl, levdat
+	ld (levres), hl
+	ld a, 28
+	ld (curspos+4), a
+	ld a, 0
+	ld (pcode), a
+	ld (pcode+1), a
+	ld (pcode+2), a
+	ld (pcode+3), a
+	ld de, badcode
+	ld bc, eobadco-badcode
+	call prtmsg
+	jp codeent
+; set data restore point to start of level data
+setuplv	ld (levres), hl
+; if level>9 then stage=2, width=4, height=3
+	xor a		; reset flags
+	ld a, (level)
+	cp 9
+	jr z, setupbg	; if level=9, exit
+	jr c, setupbg	; if level<9, exit
+	ld a, 2		; else make changes
+	ld (stage), a
+	ld a, 4
+	ld (width), a
+	ld a, 10
+	ld (lstart), a
+	ld a, 21
+	ld (lfin), a
+; if level>21 then stage=3, width=4, height=4
+	xor a		; reset flags
+	ld a, (level)
+	cp 21		
+	jr z, setupbg	; if level=21, exit
+	jr c, setupbg	; if level<21, exit
+	ld a, (stage)	; else make changes
+	ld a, 3
+	ld (stage), a
+	ld a, 4
+	ld (height), a
+	ld a, 22
+	ld (lstart), a
+	ld a, 37
+	ld (lfin), a
+; if level>37 then stage=4, width=5, height=4
+	xor a		; reset flags
+	ld a, (level)
+	cp 37		
+	jr z, setupbg	; if level=37, exit
+	jr c, setupbg	; if level<37, exit
+	ld a, (stage)	; else make changes
+	ld a, 4
+	ld (stage), a
+	ld a, 5
+	ld (width), a
+	ld a, 38
+	ld (lstart), a
+	ld a, 57
+	ld (lfin), a
+; if level>57 then stage=5, width=5, height=5
+	xor a		; reset flags
+	ld a, (level)
+	cp 57		
+	jr z, setupbg	; if level=57, exit
+	jr c, setupbg	; if level<57, exit
+	ld a, (stage)	; else make changes
+	ld a, 5
+	ld (stage), a
+	ld a, 5
+	ld (height), a
+	ld a, 58
+	ld (lstart), a
+	ld a, 82
+	ld (lfin), a
+
+; print stage & level
+setupbg	ld a, (stage)		; insert current level in banner
+	add a, 48
+	ld (levdisp+9), a
+; insert level code on banner
+	ld a, (lcode)
+	ld (levdisp+41), a
+	ld a, (lcode+1)
+	ld (levdisp+42), a
+	ld a, (lcode+2)
+	ld (levdisp+43), a
+	ld a, (lcode+3)
+	ld (levdisp+44), a
+; fill in blank spaces on banner
+	ld a, (lfin)		; lfin-lstart+1 = number of levels in stage
+	ld hl, lstart
+	sub (hl)
+	inc a
+	ld b, a
+	ld hl, levdisp+13
+lvempty ld a, 157		; insert empty banner udg
+	ld (hl), a
+	inc hl
+	djnz lvempty
+	ld (hl), 158		; insert close banner udg
+; fill in completed levels on banner
+	ld a, (level)
+	ld hl, lstart
+	sub (hl)
+	cp 0
+	jr z, prtbann
+	ld b, a
+	ld hl, levdisp+13
+lvcompl	ld a, 156		; insert crown banner udg
+	ld (hl), a
+	inc hl
+	djnz lvcompl
+; print level banner
+prtbann	ld de, levdisp		
+	ld bc, eolevdi-levdisp
+	call 8252
+
+
+; PRINT BOARD
+; remember levres in tlevres for reload of level
+	ld hl, (levres)		
+	ld (tlevres), hl
+; print border
+; print top-left cell
+	ld a, 2		; reset y position to top
+	ld (bord1+5), a
+	ld de, bord1		
+	ld bc, eobord1-bord1
+	call 8252
+; work out width in amount of attr blocks
+	ld a, (width)
+	ld b, a
+	ld a, 0
+bwidmul	add a, 3
+	djnz bwidmul
+	ld (widthx3), a
+; print top row of cells
+	ld b, a
+btop	ld a, 160
+	rst 16
+	djnz btop
+	ld a, 159
+	rst 16
+; work out height in amount of attr blocks	
+	ld a, (height)
+	ld b, a
+	ld a, 0
+bheimul	add a, 3
+	djnz bheimul
+	ld (heighx3), a
+; print all remaining rows except bottom
+	ld a, (widthx3)		; adjust width
+	add a, 3
+	ld (bord2+6), a
+	ld a, 3			; reset rows
+	ld (bord2+1), a
+	ld (bord2+5), a
+	ld a, (heighx3)		; loop by number of rows
+	ld b, a
+bmain	push bc	
+	ld de, bord2		
+	ld bc, eobord2-bord2
+	call 8252
+	ld a, (bord2+1)
+	inc a
+	ld (bord2+1), a
+	ld (bord2+5), a
+	pop bc
+	djnz bmain
+; print bottom-left cell
+	ld a, (heighx3)	; work out y position of bottom
+	add a, 3
+	ld (bord1+5), a
+	ld de, bord1		
+	ld bc, eobord1-bord1
+	call 8252
+; print bottom row of cells
+	ld a, (widthx3)
+	ld b, a
+bbottom	ld a, 160
+	rst 16
+	djnz bbottom
+	ld a, 159
+	rst 16
+
+; y, x loop within loop
+	ld a, (height)
+	ld b, a
+bhloop  push bc
+	ld a, (width)
+	ld b, a
+bwloop	push bc
+; print current square
+	ld hl, (levres)
+	ld a, (hl)
+	cp 1		; print empty square subroutine
+	jr z, bempty
+	cp 2		; print blocked square subroutine
+	jp z, bblock
+; print destination square
+	ld (gdest+1), a		; put colour (cyan or magenta in ink)
+	ld (gdest+12), a
+	ld (gdest+23), a
+	ld (gdest+32), a
+	ld a, (bcol)
+	ld (gdest+3), a
+	ld a, (py)
+	ld (gdest+5), a
+	inc a
+	ld (gdest+17), a
+	inc a
+	ld (gdest+25), a
+	ld a, (px)
+	ld (gdest+6), a
+	ld (gdest+18), a
+	ld (gdest+26), a
+	ld de, gdest		
+	ld bc, eogdest-gdest
+	call 8252		
+; shift restore point forward to next square
+nextsqu	ld hl, (levres)
+	inc hl
+	ld (levres), hl
+	ld a, (px)	; increase x
+	inc a
+	inc a
+	inc a
+	ld (px), a
+	call swapcol	; swap board colour
+	pop bc
+	djnz bwloop
+; new row
+	ld a, 3		; reset x
+	ld (px), a
+	ld a, (py)	; increase y
+	inc a
+	inc a
+	inc a
+	ld (py), a
+	ld a, (width)	; if width=4 (even), swap bcol again
+	cp 4
+	jr nz, noswap
+	call swapcol
+noswap	pop bc
+	djnz bhloop
+	jr printp	; end of printing board, go to print pieces
+; print empty square (subroutine)
+bempty	ld a, (bcol)
+	ld (gempty+3), a
+	ld a, (py)
+	ld (gempty+5), a
+	inc a
+	ld (gempty+11), a
+	inc a
+	ld (gempty+17), a
+	ld a, (px)
+	ld (gempty+6), a
+	ld (gempty+12), a
+	ld (gempty+18), a
+	ld de, gempty		
+	ld bc, eogempt-gempty
+	call 8252	
+	jr nextsqu
+; print blocked square (subroutine)
+bblock	ld a, (py)
+	ld (gblock+5), a
+	inc a
+	ld (gblock+11), a
+	inc a
+	ld (gblock+17), a
+	ld a, (px)
+	ld (gblock+6), a
+	ld (gblock+12), a
+	ld (gblock+18), a
+	ld de, gblock		
+	ld bc, eogbloc-gblock
+	call 8252		
+	jp nextsqu
+
+
+; PRINT PIECES
+printp	ld a, 3		; reset x & y 
+	ld (py), a
+	inc a
+	ld (px), a
+	ld a, 7		; reset board colour
+	ld (bcol), a
+; y, x loop within loop
+	ld a, (height)
+	ld b, a
+phloop  push bc
+	ld a, (width)
+	ld b, a
+pwloop	push bc
+; print current piece
+	ld hl, (levres)
+	ld a, (hl)
+	cp 1		; skip empty piece
+	jr z, nextpie
+; print knight piece
+	ld (gknight+1), a	; put colour (cyan/green/magenta) in ink
+	ld a, (bcol)
+	ld (gknight+3), a
+	ld a, (py)
+	ld (gknight+7), a
+	inc a
+	ld (gknight+11), a
+	inc a
+	ld (gknight+15), a
+	ld a, (px)
+	ld (gknight+8), a
+	ld (gknight+12), a
+	ld (gknight+16), a
+	ld de, gknight		
+	ld bc, eogknig-gknight
+	call 8252		
+; shift restore point forward to next piece
+nextpie	ld hl, (levres)
+	inc hl
+	ld (levres), hl
+	ld a, (px)	; increase x
+	inc a
+	inc a
+	inc a
+	ld (px), a
+	call swapcol	; swap board colour
+	pop bc
+	djnz pwloop
+; new row
+	ld a, 4		; reset x
+	ld (px), a
+	ld a, (py)	; increase y
+	inc a
+	inc a
+	inc a
+	ld (py), a
+	ld a, (width)	; if width=4 (even), swap bcol again
+	cp 4
+	jr nz, noswap2
+	call swapcol	
+noswap2	pop bc
+	djnz phloop
+	ld a, 7		; reset bcol to white for top-left start position
+	ld (bcol), a
+
+
+; CURSOR MOVEMENT	
+	ld a, 0		; caps lock off
+	ld (23658), a
+; initialise cursor to top left (3, 3)
+	ld a, 3
+	ld (px), a
+	ld (py), a
+	call getattr
+	call ptattr1
+; northeast/west keypress
+gamelp	ld bc, $fbfe	; north check
+	in a, (c)
+	and %00000001
+	jr nz, skipnew
+	ld bc, $dffe	; east check	
+	in a, (c)
+	and %00000001
+	jp z, movene
+	ld bc, $dffe	; west check
+	in a, (c)
+	and %00000010
+	jp z,  movenw
+skipnew	equ $
+; southeast/west keypress
+	ld bc, $fdfe	; south check
+	in a, (c)
+	and %00000001
+	jr nz, skipsew
+	ld bc, $dffe	; east check	
+	in a, (c)
+	and %00000001
+	jp z, movese
+	ld bc, $dffe	; west check
+	in a, (c)
+	and %00000010
+	jp z,  movesw
+skipsew	equ $	
+; north keypress
+	ld bc, $fbfe	
+	in a, (c)
+	and %00000001
+	jp z, moven
+; east keypress
+	ld bc, $dffe	
+	in a, (c)
+	and %00000001
+	jp z, movee
+; south keypress
+	ld bc, $fdfe	
+	in a, (c)
+	and %00000001
+	jp z, moves
+; west keypress
+	ld bc, $dffe	
+	in a, (c)
+	and %00000010
+	jp z,  movew
+; select keypress
+	ld a, (lastk)
+	cp 32
+	jp z, select 
+; reload level keypress
+	ld bc, $fbfe
+	in a, (c)
+	and %00001000
+	jp z, reload
+	jp gamelp
+
+; move north
+; if already at north end of board, skip move
+moven	ld a, (py)
+	cp 3
+	jp z, gamelp
+; execute move
+	ld b, 3
+n3sq	push bc
+	call ptattr0
+	ld a, (py)
+	dec a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz n3sq
+	call swapcol
+	jp gamelp
+
+; move northeast
+; if already at north end of board, skip move
+movene	ld a, (py)
+	cp 3
+	jp z, gamelp
+; if already at east end of board, skip move
+	ld a, (width)
+	ld c, a
+	xor a
+	ld b, 3
+widx3ne	add a, c
+	djnz widx3ne
+	ld b, a
+	ld a, (px)
+	cp b
+	jp z, gamelp
+; execute move
+	ld b, 3
+ne3sq	push bc
+	call ptattr0
+	ld a, (px)
+	inc a
+	ld (px), a
+	ld a, (py)
+	dec a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz ne3sq
+	jp gamelp
+
+; move east
+; if already at east end of board, skip move
+movee	ld a, (width)
+	ld c, a
+	xor a
+	ld b, 3
+widx3e	add a, c
+	djnz widx3e
+	ld b, a
+	ld a, (px)
+	cp b
+	jp z, gamelp
+; execute move
+	ld b, 3		
+e3sq	push bc
+	call ptattr0
+	ld a, (px)
+	inc a
+	ld (px), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz e3sq
+	call swapcol
+	jp gamelp
+
+; move southeast
+; if already at south end of board, skip move
+movese	ld a, (height)
+	ld c, a
+	xor a
+	ld b, 3
+higx3se	add a, c
+	djnz higx3se
+	ld b, a
+	ld a, (py)
+	cp b
+	jp z, gamelp
+; if already at east end of board, skip move
+	ld a, (width)
+	ld c, a
+	xor a
+	ld b, 3
+widx3se	add a, c
+	djnz widx3se
+	ld b, a
+	ld a, (px)
+	cp b
+	jp z, gamelp
+; execute move
+	ld b, 3	
+se3sq	push bc
+	call ptattr0
+	ld a, (px)
+	inc a
+	ld (px), a
+	ld a, (py)
+	inc a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz se3sq	
+	jp gamelp
+
+; move south
+; if already at south end of board, skip move
+moves	ld a, (height)
+	ld c, a
+	xor a
+	ld b, 3
+higx3s	add a, c
+	djnz higx3s
+	ld b, a
+	ld a, (py)
+	cp b
+	jp z, gamelp
+; execute move	
+	ld b, 3
+s3sq	push bc
+	call ptattr0
+	ld a, (py)
+	inc a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz s3sq
+	call swapcol
+	jp gamelp
+
+; move southwest
+; if already at south end of board, skip move
+movesw	ld a, (height)
+	ld c, a
+	xor a
+	ld b, 3
+higx3sw	add a, c
+	djnz higx3sw
+	ld b, a
+	ld a, (py)
+	cp b
+	jp z, gamelp
+; if already at west end of board, skip move
+	ld a, (px)
+	cp 3
+	jp z, gamelp
+; execute move
+	ld b, 3	
+sw3sq	push bc
+	call ptattr0
+	ld a, (px)
+	dec a
+	ld (px), a
+	ld a, (py)
+	inc a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz sw3sq
+	jp gamelp
+
+; move west
+; if already at west end of board, skip move
+movew	ld a, (px)
+	cp 3
+	jp z, gamelp
+; execute move
+	ld b, 3
+w3sq	push bc
+	call ptattr0
+	ld a, (px)
+	dec a
+	ld (px), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz w3sq
+	call swapcol
+	jp gamelp
+
+; move northwest
+; if already at north end of board, skip move
+movenw	ld a, (py)
+	cp 3
+	jp z, gamelp
+; if already at west end of board, skip move
+	ld a, (px)
+	cp 3
+	jp z, gamelp
+; execute move
+	ld b, 3	
+nw3sq	push bc
+	call ptattr0
+	ld a, (px)
+	dec a
+	ld (px), a
+	ld a, (py)
+	dec a
+	ld (py), a
+	call getattr
+	call ptattr1
+	halt
+	halt
+	halt
+	pop bc
+	djnz nw3sq
+	jp gamelp
+
+; select piece
+; check if a knight exists under cursor
+select	call getattr
+	ld de, 33	; focus on dead centre, avoiding destination corners
+	add hl,de	
+	ld a, (hl)
+	cp 120		; if empty square (white), check move 
+	jp z, checkmv
+	cp 72		; if empty square (blue), check move
+	jp z, checkmv
+	cp 121		; if blocked square, deselect current
+	jp z, desonly
+; deselect previous selection (if any)
+	ld a, (tx)	; if no current selection, skip ahead
+	cp 255
+	jr z, newsel
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, deselct
+	ld a, (ty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr z, newsel
+deselct	call desprev
+; select this piece
+newsel	ld a, (bcol)
+	ld (tbcol), a	; remember bcol for later
+	cp 7
+	jr z, whitdec
+	ld a, (hl)
+	sub 72
+	jr notwhit
+whitdec	ld a, (hl)
+	sub 120
+notwhit ld (tkcol), a		; match ink to original knight
+	ld (gkfuzzy+1), a	
+	ld a, (bcol)		; match paper to bcol
+	ld (gkfuzzy+3), a	
+	ld a, (py)
+	ld (gkfuzzy+7), a
+	inc a
+	ld (gkfuzzy+11), a
+	inc a
+	ld (gkfuzzy+15), a
+	ld a, (px)
+	inc a
+	ld (gkfuzzy+8), a
+	ld (gkfuzzy+12), a
+	ld (gkfuzzy+16), a
+	ld de, gkfuzzy		; print fuzzy (selected) knight
+	ld bc, eogkfuz-gkfuzzy
+	call 8252
+
+; click sound effect
+	ld bc, 10
+seloop	push bc
+	ld a, 16
+	out (254), a
+	ld b, 60
+seldel1	nop
+	djnz seldel1
+	xor a
+	out (254), a
+	ld b, 60
+seldel2	nop
+	djnz seldel2
+	pop bc
+	dec bc
+	ld a, b
+	or c
+	jr nz, seloop
+; clear lastk & remember x, y for later
+	ld a, 0			
+	ld (lastk), a
+	ld a, (py)		
+	ld (ty), a
+	ld a, (px)
+	ld (tx), a
+; loop back to player accepting input
+	jp gamelp
+
+; deselect only (no new selection)
+desonly	call desprev
+	jp gamelp
+
+; check if intended move is a valid knight piece move
+checkmv ld a, (tx)
+	add a, 3
+	ld (ttx),a
+	ld a, (ty)
+	sub 6 
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check2
+	ld a, (tty)
+	ld b, a	
+	ld a, (py)
+	cp b
+	jr nz, check2
+	jp execmov
+check2	ld a, (tx)
+	add a, 6
+	ld (ttx),a
+	ld a, (ty)
+	sub 3 
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check3
+	ld a, (tty)
+	ld b, a	
+	ld a, (py)
+	cp b
+	jr nz, check3
+	jp execmov
+check3	ld a, (tx)
+	add a, 6
+	ld (ttx),a
+	ld a, (ty)
+	add a, 3 
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check4
+	ld a, (tty)
+	ld b, a	
+	ld a, (py)
+	cp b
+	jr nz, check4
+	jp execmov
+check4	ld a, (tx)
+	add a, 3
+	ld (ttx),a
+	ld a, (ty)
+	add a, 6
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check5
+	ld a, (tty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr nz, check5
+	jp execmov
+check5	ld a, (tx)
+	sub 3
+	ld (ttx),a
+	ld a, (ty)
+	add a, 6
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check6
+	ld a, (tty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr nz, check6
+	jp execmov
+check6	ld a, (tx)
+	sub 6
+	ld (ttx),a
+	ld a, (ty)
+	add a, 3
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check7
+	ld a, (tty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr nz, check7
+	jp execmov
+check7	ld a, (tx)
+	sub 6
+	ld (ttx),a
+	ld a, (ty)
+	sub 3
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, check8
+	ld a, (tty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr nz, check8
+	jp execmov
+check8	ld a, (tx)
+	sub 3
+	ld (ttx),a
+	ld a, (ty)
+	sub 6
+	ld (tty), a
+	ld a, (ttx)
+	ld b, a
+	ld a, (px)
+	cp b
+	jr nz, chkover
+	ld a, (tty)
+	ld b, a
+	ld a, (py)
+	cp b
+	jr nz, chkover
+	jp execmov
+chkover call desprev
+	jp gamelp
+
+execmov	equ $
+; undraw previous piece
+	ld a, 0			; ink black to previous knight selection
+	ld (gkwipe+1), a	
+	ld a, (tbcol)		; match paper to tbcol
+	ld (gkwipe+3), a	
+	ld a, (ty)
+	ld (gkwipe+7), a
+	inc a
+	ld (gkwipe+11), a
+	inc a
+	ld (gkwipe+15), a
+	ld a, (tx)
+	inc a
+	ld (gkwipe+8), a
+	ld (gkwipe+12), a
+	ld (gkwipe+16), a
+	ld de, gkwipe		; print space over knight
+	ld bc, eogkwip-gkwipe
+	call 8252
+; draw new knight
+	ld a, (tkcol)
+	ld (tkcol), a		; match ink to original knight
+	ld (gkfuzzy+1), a	
+	ld a, (bcol)		; match paper to bcol
+	ld (gkfuzzy+3), a	
+	ld a, (py)
+	ld (gkfuzzy+7), a
+	inc a
+	ld (gkfuzzy+11), a
+	inc a
+	ld (gkfuzzy+15), a
+	ld a, (px)
+	inc a
+	ld (gkfuzzy+8), a
+	ld (gkfuzzy+12), a
+	ld (gkfuzzy+16), a
+	ld de, gkfuzzy		; print fuzzy (selected) knight
+	ld bc, eogkfuz-gkfuzzy
+	call 8252
+	ld a, (py)		; remember x & y for later
+	ld (ty), a
+	ld a, (px)
+	ld (tx), a
+
+; check if level complete
+	call ptattr0		; remove cursor from screen
+; y, x loop within loop
+	ld hl, 22627		; target first attr on top-left of board
+	ld a, 1			; set win flag (temporarily)
+	ld (win), a
+	ld a, (height)
+	ld b, a
+chloop  push bc
+	ld a, (width)
+	ld b, a
+cwloop	push bc
+	ld a, (hl)
+	cp 8		; skip if blank square (blue)
+	jr z, cwfin
+	cp 56		; skip if blank square (white)
+	jr z, cwfin
+	cp 57		; skip if blocked square
+	jr z, cwfin
+	ld b, a		; put attr colour in b
+	inc hl		; scan right 1 attr
+	ld a, (hl)	; put attr colour in a
+	dec hl	 	; retrace step on screen for later
+	cp b		; if colours don't match, no win
+	jr z, cwfin
+	ld a, 0
+	ld (win), a
+cwfin	inc hl		; move right to next square
+	inc hl
+	inc hl	
+	pop bc
+	djnz cwloop
+; new row
+	ld de, 64	; add two rows
+	add hl, de
+	ld a, (widthx3)	; calculate width of board
+	ld b, a
+	ld a, 32
+	sub b
+	ld d, 0		; move forward extra amount
+	ld e, a
+	add hl, de
+	pop bc
+	djnz chloop
+	ld a, (win)
+	cp 1		; check if win still acive
+	jr z, newlev
+	call ptattr1
+	jp gamelp
+
+
+; LOAD NEW LEVEL AFTER A WIN
+newlev	
+; whoop sound effect
+	ld a, ($5c48)
+	rrca
+	rrca
+	rrca
+	ld e, 0
+	di
+nxclick	out ($0fe), a
+	xor $10
+	ld b, e
+self	djnz self
+	dec e
+	jr nz, nxclick
+	ei
+; brief pause
+	ld b, 40
+nlpause	halt
+	djnz nlpause
+; clear lastk & increase level count
+	ld a, 0		
+	ld (lastk), a
+	ld a, (level)	
+	inc a
+	ld (level), a			
+; has player completed final level of current stage?
+	ld b, a
+	dec b
+	ld a, (lfin)
+	cp b
+	jr nz, finlev
+; insert final crown into banner
+	ld hl, levdisp+13
+	ld a, (lstart)	; calculate number of levels in stage
+	ld b, a	
+	ld a, (lfin)
+	sub b
+	ld b, a		; move forward number of levels
+lastcro	inc hl
+	djnz lastcro
+	ld a, 156	; crown graphic
+	ld (hl), a
+	ld de, levdisp		; print modified banner		
+	ld bc, eolevdi-levdisp
+	call 8252
+; play music
+	call 50000
+; has player completed final level of game?
+finlev	ld hl, (levres)
+	ld a, (hl)
+	cp 255		; end of data marker reached?
+	jr z, gamewon
+; grab next level code
+	inc hl
+	ld de, lcode
+	ld bc, 4
+	ldir
+
+	ld (levres), hl ; store new data restore point
+loadlv	ld a, 3		; reset x & y to top-left of board
+	ld (py), a
+	ld (px), a
+	ld a, 255
+	ld (ty), a
+	ld (tx), a
+	ld a, 7		; reset bcol
+	ld (bcol), a
+	jp setuplv	; jump back to scan new level code
+
+
+; RELOAD CURRENT LEVEL
+; tearing sound effect
+reload	di
+	ld hl,0
+	ld c, 255
+tearlp1	inc hl
+	ld a, (hl)
+	and 248
+	out (254), a
+	ld b,c
+tearlp2	djnz tearlp2
+	dec c
+	jr nz, tearlp1
+	ei
+; reload level
+	ld hl, (tlevres)
+	jr loadlv
+	
+
+; PLAYER COMPLETES GAME
+; congratulations message
+gamewon	ld hl, congrat+1
+	ld a, 0
+	ld b, 8
+conglp0	push bc
+conglp1	ld (hl), a
+	push af
+	ld de, congrat
+	ld bc, eocongr-congrat
+	call 8252
+	halt
+	halt
+	halt
+	pop af
+	inc a
+	cp 7
+	jr nz, conglp1
+conglp2	ld (hl), a	
+	push af
+	ld de, congrat
+	ld bc, eocongr-congrat
+	call 8252
+	halt
+	halt
+	halt
+	pop af
+	dec a
+	cp 0
+	jr nz, conglp2
+	pop bc
+	djnz conglp0
+; reset relevant variables and screen positions
+	ld a, 0
+	ld (pcode), a
+	ld (pcode+1), a
+	ld (pcode+2), a
+	ld (pcode+3), a
+	ld a, 1
+	ld (level), a
+	ld (stage), a
+	ld (lstart), a
+	ld a, 9
+	ld (lfin), a
+	ld hl, levdat
+	ld (levres), hl
+	ld a, 3
+	ld (width), a
+	ld (height), a
+	ld (py), a
+	ld (px), a
+	ld a, 255
+	ld (ty), a
+	ld (tx), a
+	ld a, 7
+	ld (bcol), a
+	ld a, 28		; reset code-entry cursor position
+	ld (curspos+4), a
+	ld hl, levdisp+23	; reset banner graphic
+	ld a, " "
+	ld b, 16
+fill	ld (hl), a
+	inc hl
+	djnz fill
+	jp start		; restart game
+                       
+
+; SUBROUTINES
+
+; print message and pause (keypress to continue)
+prtmsg	call 8252
+	ld hl, lastk
+	ld (hl), 0
+	ld b, 250
+prtwait	halt
+	ld a, (lastk)
+	cp 0
+	jr nz, prtend
+	djnz prtwait
+prtend	ret
+
+; swap board colour (blue/white)
+swapcol	ld a, (bcol)	; swap bcol (white/blue)
+	cp 7
+	jr z, turnblu
+	ld a, 7
+	ld (bcol), a
+	jr notblue
+turnblu	ld a, 1
+	ld (bcol), a
+notblue	ret
+
+; work out curattr from x & y
+getattr	ld hl, 22528	; start of attributes
+	ld bc, 0	; x offset
+	ld a, (px)
+	ld c, a
+	add hl, bc
+	ld a, (py)	; y offset
+	ld b, a
+downrow	push bc
+	ld bc, 32
+	add hl, bc
+	pop bc
+	djnz downrow
+	ld (curattr), hl
+	ret
+
+; print attribute block
+ptattr1	ld de, 30		; for next line, retracing 2 steps from 32
+	ld hl, (curattr)	; top left attr in block
+	ld b, 3
+ptaloo1	ld a, (hl)		; get current value
+	add a, 64		; add 64 to make bright
+	ld (hl), a		; put on screen
+	inc hl			; go to next block on right
+	ld a, (hl)		; repeat 3 times...
+	add a, 64
+	ld (hl), a
+	inc hl
+	ld a, (hl)
+	add a, 64
+	ld (hl), a
+	add hl, de
+	djnz ptaloo1
+	ret
+	
+; unprint attribute block
+ptattr0	ld de, 30		; for next line, retracing 2 steps from 32
+	ld hl, (curattr)	; top left attr in block
+	ld b, 3
+ptaloo2	ld a, (hl)		; get current value
+	sub 64			; subtract 64 to turn off brightness
+	ld (hl), a		; put on screen
+	inc hl			; go to next block on right
+	ld a, (hl)		; repeat 3 times...
+	sub 64
+	ld (hl), a
+	inc hl
+	ld a, (hl)
+	sub 64
+	ld (hl), a
+	add hl, de
+	djnz ptaloo2
+	ret
+
+; deselect previous selection 
+desprev	ld a, (tx)
+	cp 255
+	ret z
+	ld a, (tkcol)		; match ink to previous knight selection
+	ld (gknight+1), a	
+	ld a, (tbcol)		; match paper to bcol
+	ld (gknight+3), a	
+	ld a, (ty)
+	ld (gknight+7), a
+	inc a
+	ld (gknight+11), a
+	inc a
+	ld (gknight+15), a
+	ld a, (tx)
+	inc a
+	ld (gknight+8), a
+	ld (gknight+12), a
+	ld (gknight+16), a
+	ld de, gknight		; print normal knight over fuzzy
+	ld bc, eogknig-gknight
+	call 8252
+	ld a, 255
+	ld (tx), a
+	ret
+
+
+; STRINGS
+
+; strings for graphics
+gempty	defb 16, 0, 17, 7
+	defb 22, 3, 3, "   "
+	defb 22, 4, 3, "   "
+	defb 22, 5, 3, "   "
+eogempt equ $
+gblock	defb 16, 1, 17, 7
+	defb 22, 3, 3, 154, 154, 154
+	defb 22, 4, 3, 154, 154, 154
+	defb 22, 5, 3, 154, 154, 154
+eogbloc equ $
+gdest	defb 16, 5, 17, 1
+	defb 22, 3, 3, 150, 16, 0, " ", 16, 5, 151
+	defb 16, 0
+	defb 22, 4, 3, "   "
+	defb 16, 5
+	defb 22, 5, 3, 152, 16, 0, " ", 16, 5, 153
+eogdest	equ $
+gknight	defb 16, 5, 17, 7, 19, 0
+	defb 22, 3, 4, 144
+	defb 22, 4, 4, 145
+	defb 22, 5, 4, 146
+eogknig equ $
+gkfuzzy	defb 16, 5, 17, 7, 19, 1
+	defb 22, 3, 4, 147
+	defb 22, 4, 4, 148
+	defb 22, 5, 4, 149
+eogkfuz equ $
+gkwipe	defb 16, 0, 17, 7, 19, 0
+	defb 22, 3, 4, " "
+	defb 22, 4, 4, " "
+	defb 22, 5, 4, " "
+eogkwip equ $
+bord1	defb 16, 2, 17, 0
+	defb 22, 2, 2, 159
+eobord1	equ $
+bord2	defb 22, 3, 2, 161
+	defb 22, 3, 11, 161
+eobord2	equ $
+
+
+; strings for text
+intro1	defb 22, 0, 1, 16, 7, 17, 0, "Original PC game ", $7f, " 2017 Arzola"
+eointr1	equ $
+intro2	defb 22, 0, 0, "Spectrum version by Darryl Sloan"
+eointr2	equ $
+intro3	defb 22, 0, 0, "    Pixel art by Andy Green     "
+eointr3	equ $
+intro4	defb 22, 0, 0, "Keys: Q, A, O, P, SPACE, R=Retry"
+eointr4	equ $
+intro5	defb 22, 0, 0, "Level code (AAAA to begin):     "
+eointr5 equ $
+curspos	defb 18, 0, 22, 0, 28	; turn off flash, place cursor in y, x
+eocursp	equ $
+curflas	defb 18, 1, " "		; print flashing cursor
+eocurfl	equ $
+badcode	defb 22, 0, 0, "Code not recognised!       "
+eobadco equ $
+levdisp	defb 16, 7, 17, 0, 19, 0, 22, 0, 0, "*", 16, 6, 155, "+++++++++]                ", 16, 7, "****"
+eolevdi equ $
+congrat	defb 16, 0, 17, 0, 19, 1, 22, 0, 0, "  You have completed the game!  "
+eocongr equ $
+
+; VARIABLES
+pcode	defb 0,0,0,0
+lcode	defb 0,0,0,0
+win	defb 0
+level	defb 1
+levres	defw levdat
+tlevres	defw levdat	; temporary store to enable reload of level
+stage	defb 1
+width	defb 3
+height	defb 3
+widthx3	defb 0
+heighx3	defb 0
+lstart	defb 1
+lfin	defb 9
+py	defb 3		; for cursor
+px	defb 3		; for cursor
+ty	defb 255	; for selected piece
+tx	defb 255	; for selected piece (255 = no current selection)
+tty	defb 0		; used when determining if a move is valid
+ttx	defb 0		; used when determining if a move is valid
+bcol	defb 7		; for cursor
+tbcol	defb 7		; for selected board
+tkcol	defb 5		; for selected piece
+curattr	defw 22528
+
+
+; UDG DATA
+; knight
+udgs	defb 0,0,0,0,16,28,46,126
+	defb 255,79,15,31,63,127,255, 255
+	defb 60,126,255,255,0,0,0,0
+; knight fuzzy
+	defb 0,0,0,0,16,24,52,106
+	defb 245,74,13,26,53,106,213,234
+	defb 52,106,213,255,0,0,0,0
+; destination
+	defb 255,252,240,224,192,192,128,128	; top-left
+	defb 255,63,15,7,3,3,1,1		; top-right
+	defb 128,128,192,192,224,240,252,255	; bottom-left
+	defb 1,1,3,3,7,15,63,255		; bottom-right
+; blocked tile
+	defb 51,51,204,204,51,51,204,204
+; progress bar
+	defb 1,1,1,1,1,1,1,1			; start
+	defb 255,0,73,107,127,127,0,255		; filled cell
+	defb 255,0,0,0,0,0,0,255		; empty cell
+	defb 192,64,64,64,64,64,64,192		; finish
+; board borders
+	defb 0,126,84,106,84,106,84,0		; corner
+	defb 0,255,85,170,85,170,85,0		; horizontal
+	defb 84,106,84,106,84,106,84,106	; vertical
+
+
+; LEVEL DATA
+; stage 1 (levels 1-9)
+levdat	defb 0, "AAAA"		; passcode
+	defb 1,1,1,2,2,1,5,2,1	; board (1=empty, 2=block, 3/5=dest)
+	defb 5,1,1,1,1,1,1,1,1	; pieces (1=empty, 3/4/5=knight)
+	defb 0, "KVFG", 1,1,5,2,2,1,1,1,1,   1,1,1,1,1,1,1,1,5
+	defb 0, "BCPT", 1,1,1,5,2,5,1,1,1,   5,1,1,1,1,1,1,1,5
+	defb 0, "ZJFV", 1,5,1,1,2,5,1,1,5,   1,5,1,5,1,1,1,1,5
+	defb 0, "YRSA", 2,5,1,1,2,5,1,1,1,   1,5,1,5,1,1,1,1,1
+	defb 0, "DYJE", 2,1,1,1,2,5,5,1,1,   1,1,1,5,1,1,1,5,1
+	defb 0, "RQXE", 1,2,1,3,2,5,1,2,1,   5,1,1,1,1,1,1,1,3
+	defb 0, "KJOT", 3,1,1,1,2,1,1,1,5,   5,1,1,1,1,1,1,1,3
+	defb 0, "GSFK", 1,1,1,3,2,1,5,1,1,   3,1,1,1,1,1,1,1,5
+	defb 0, "BCTD", 1,1,3,1,2,5,1,5,1,1,3,1,   1,3,1,5,1,1,1,1,1,3,1,5
+	defb 0, "SHSP", 1,3,1,1,2,3,1,1,5,1,1,1,   1,1,1,1,1,1,5,3,3,1,1,1
+	defb 0, "HFSX", 1,5,1,1,1,2,3,3,1,5,1,1,   1,5,1,5,1,1,1,1,1,3,1,3
+	defb 0, "CECU", 5,1,3,1,1,2,1,2,3,1,5,1,   1,3,1,5,1,1,1,1,1,3,1,5
+	defb 0, "RYGE", 1,1,3,1,2,5,2,1,2,5,1,1,   1,1,1,1,1,3,1,1,1,5,1,5
+	defb 0, "ZSDO", 1,1,5,5,2,1,1,2,1,1,1,3,   1,1,1,1,1,1,3,1,5,5,1,1
+	defb 0, "BZEF", 3,1,1,5,1,1,1,1,1,5,3,1,   5,1,1,3,1,1,1,1,5,1,1,3
+	defb 0, "NWGL", 1,3,1,1,1,5,2,1,1,5,1,3,   3,1,3,1,5,1,1,1,5,1,1,1
+	defb 0, "JORX", 3,1,2,5,1,1,1,1,1,1,3,1,   1,1,1,1,1,3,5,3,1,1,1,1
+	defb 0, "PKGM", 3,1,1,3,1,2,1,2,5,1,1,5,   5,1,1,5,1,1,1,1,3,1,1,3
+	defb 0, "QBJM", 2,1,1,3,1,1,5,2,1,5,3,1,   1,5,1,1,1,1,3,1,1,5,1,3
+	defb 0, "VBEJ", 1,5,1,2,5,2,2,3,2,1,3,1,   3,1,1,1,5,1,1,3,1,1,1,5
+	defb 0, "PRJX", 1,1,5,5,1,1,2,5,3,2,2,1,3,3,1,1,   1,1,3,3,1,1,1,3,5,1,1,1,5,5,1,1
+	defb 0, "HJCW", 1,5,1,3,1,1,2,1,2,3,1,5,5,2,1,1,   3,1,1,5,5,1,1,1,1,1,1,1,1,1,5,3
+	defb 0, "NDLE", 2,1,1,2,3,2,5,5,3,3,2,5,2,1,1,2,   1,1,1,1,5,1,3,3,5,5,1,3,1,1,1,1
+	defb 0, "TKCW", 1,1,5,1,1,1,2,5,3,2,1,3,1,1,1,1,   1,1,1,1,3,1,1,1,1,1,3,1,5,5,1,1
+	defb 0, "KEBY", 5,2,1,5,3,1,1,3,1,1,2,2,2,3,1,5,   1,1,1,1,5,1,3,5,1,3,1,1,1,1,5,3
+	defb 0, "SYDE", 3,1,1,2,2,5,3,1,1,5,5,2,2,1,1,3,   1,3,1,1,1,3,3,1,1,5,5,1,1,1,5,1
+	defb 0, "TOYG", 3,1,1,5,1,3,5,1,1,5,3,1,5,1,1,3,   1,3,3,1,5,1,1,5,5,1,1,5,1,3,3,1
+	defb 0, "KDWG", 1,3,1,3,1,2,5,1,5,2,1,2,3,1,1,5,   1,3,3,1,5,1,1,5,1,1,1,1,1,5,3,1
+	defb 0, "YKUF", 1,1,1,5,5,1,3,2,3,5,1,1,1,2,1,3,   1,3,5,1,1,5,1,1,1,1,3,5,3,1,1,1
+	defb 0, "RJXK", 1,5,3,2,1,3,1,2,2,1,1,5,5,1,3,2,   3,1,1,1,5,1,5,1,1,5,1,1,3,3,1,1
+	defb 0, "WIMD", 5,3,5,3,1,1,1,1,1,1,1,1,3,5,3,5,   1,1,1,1,3,5,3,5,5,3,5,3,1,1,1,1
+	defb 0, "ECID", 5,2,1,3,3,3,1,5,1,2,1,2,1,5,1,2,   1,1,1,5,1,5,3,3,5,1,1,1,1,1,3,1
+	defb 0, "YDKM", 3,1,2,5,1,2,1,1,3,1,3,3,1,3,1,2,   5,3,1,1,3,1,3,3,1,3,1,1,1,1,1,1
+	defb 0, "RVYT", 1,3,1,2,1,5,1,3,1,1,2,2,5,1,3,5,   1,1,1,1,3,1,3,5,5,3,1,1,1,1,5,1
+	defb 0, "GSJT", 1,1,1,1,5,3,5,3,3,5,3,5,1,1,1,1,   1,1,1,1,3,5,3,5,5,3,5,3,1,1,1,1
+	defb 0, "LRBR", 3,1,5,1,2,1,3,5,5,3,1,2,1,2,2,1,   5,1,1,3,1,3,5,1,1,5,3,1,1,1,1,1 
+	defb 0, "TMID", 3,2,1,1,5,3,2,1,2,5,3,2,1,2,5,3,1,1,2,5,   5,1,1,1,3,5,1,1,1,3,5,1,1,1,3,5,1,1,1,3
+	defb 0, "XHTS", 3,3,3,3,1,2,2,1,1,2,2,1,1,2,2,1,5,5,5,5,   5,5,5,5,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,3
+	defb 0, "KEIF", 1,1,1,3,3,2,2,1,2,2,2,2,1,2,2,5,5,1,1,1,   5,5,1,1,1,1,1,4,1,1,1,1,4,1,1,1,1,1,3,3
+	defb 0, "KFBT", 5,2,1,1,2,5,1,1,1,3,1,1,1,3,3,5,2,1,1,2,   3,1,1,1,1,3,1,4,4,5,1,4,4,5,5,3,1,1,1,1
+	defb 0, "ILYV", 5,1,2,1,5,1,1,3,1,2,2,1,1,1,1,3,1,5,1,3,   3,1,1,3,4,4,4,5,4,1,1,5,3,4,1,4,1,4,1,5
+	defb 0, "OMKF", 1,5,2,3,1,2,1,3,1,2,2,1,5,1,2,1,3,2,5,1,   1,3,1,4,1,1,3,4,3,1,1,5,4,5,1,1,5,1,4,1
+	defb 0, "JFIL", 5,2,1,1,3,1,3,1,2,1,1,2,1,1,1,3,5,1,2,5,   4,1,3,1,5,3,4,4,1,1,5,1,1,4,4,4,4,5,1,3
+	defb 0, "VNOG", 1,1,1,1,1,5,2,3,2,3,1,5,1,1,1,3,1,2,1,5,   1,4,4,3,1,4,1,5,1,4,1,3,4,5,4,5,4,1,1,3
+	defb 0, "QUJL", 1,1,1,5,1,2,2,1,2,3,2,2,3,2,1,2,2,1,5,1,   5,4,1,1,4,1,1,3,1,5,1,1,4,1,4,1,1,3,1,1
+	defb 0, "GDHT", 2,1,1,5,2,1,1,1,1,3,5,1,1,1,2,3,2,1,3,5,   1,4,1,3,1,1,4,4,5,4,4,3,4,1,1,5,1,4,5,3
+	defb 0, "MDUC", 1,5,3,1,2,5,2,1,1,1,1,1,3,2,1,1,5,2,3,1,   1,3,4,4,1,4,1,4,3,5,4,5,4,1,1,1,3,1,5,4
+	defb 0, "DHUK", 1,1,1,2,3,5,2,1,1,5,1,3,1,1,2,5,2,1,1,3,   1,5,1,1,4,3,1,5,5,3,1,4,4,4,1,3,1,4,4,4
+	defb 0, "AKFB", 2,2,2,5,3,1,1,1,1,2,1,1,1,1,2,2,2,2,3,5,   1,1,1,3,5,4,1,4,4,1,4,1,4,4,1,1,1,1,5,3
+	defb 0, "WHDP", 3,1,1,2,5,2,3,1,5,1,5,1,1,1,2,1,2,2,1,3,   5,4,5,1,4,1,4,4,4,3,3,1,3,4,1,1,1,1,1,5
+	defb 0, "SKFI", 2,1,5,1,1,1,3,2,1,5,1,1,3,1,1,1,5,1,2,3,   1,3,3,1,3,1,5,1,4,4,4,4,5,4,4,1,4,4,1,5
+	defb 0, "RJCE", 5,1,1,3,2,1,2,1,5,1,1,3,5,2,1,2,1,1,3,1,   4,3,5,4,1,4,1,1,4,1,1,4,3,1,5,1,5,1,4,3
+	defb 0, "IFNI", 1,1,1,2,1,5,3,2,5,1,2,1,1,1,3,3,1,5,1,1,   4,1,3,1,1,4,4,1,3,4,1,3,5,4,4,4,5,4,5,1
+	defb 0, "DKFX", 1,5,2,1,1,2,1,3,1,1,1,1,1,5,2,5,3,2,1,3,   4,4,1,5,3,1,3,5,4,1,5,1,4,4,1,4,4,1,3,1
+	defb 0, "JFBD", 1,1,1,5,5,1,1,1,3,2,3,2,1,2,1,3,1,5,1,1,   1,5,3,4,4,5,4,1,4,1,4,1,4,1,3,4,3,4,1,5
+	defb 0, "OHDY", 5,3,5,1,1,1,1,1,1,1,3,3,2,2,2,1,5,2,2,2,   3,1,1,1,5,5,1,5,1,3,4,4,1,1,1,4,3,1,1,1
+	defb 0, "KGKU", 3,1,1,1,1,1,1,5,2,1,1,5,2,3,1,1,2,3,1,1,1,1,1,1,5,   4,4,4,4,3,1,5,4,1,1,3,4,1,4,5,1,1,4,5,1,3,4,4,4,4
+	defb 0, "HIJF", 1,1,1,1,1,1,2,5,2,1,1,3,1,3,1,2,5,2,5,1,1,1,3,1,1,   4,4,1,4,4,4,1,3,1,4,5,4,4,4,5,1,3,1,3,1,1,4,5,4,1
+	defb 0, "FJYC", 1,5,1,5,1,1,2,5,2,1,1,1,1,1,1,1,1,1,1,1,3,2,3,2,3,   5,3,5,3,5,1,1,3,1,1,1,4,1,4,1,4,4,4,4,4,4,1,4,1,4
+	defb 0, "TGKD", 1,1,1,1,3,2,5,1,5,2,3,1,2,1,3,2,5,1,5,2,1,1,1,1,3,   1,4,5,4,4,1,3,4,3,1,5,1,1,1,5,1,3,4,3,1,1,4,5,4,4
+	defb 0, "LGFB", 1,3,1,1,2,1,2,3,1,1,1,5,2,3,1,1,1,5,2,1,2,1,1,5,1,   1,5,4,1,1,4,1,5,4,1,4,3,1,5,4,1,4,3,1,4,1,1,4,3,1
+	defb 0, "KYLR", 1,1,3,1,1,1,2,3,2,1,5,5,2,5,5,1,2,3,2,1,1,1,3,1,1,   1,4,5,4,1,4,1,5,1,4,3,3,1,3,3,4,1,5,1,4,1,4,5,4,1
+	defb 0, "UGFT", 5,2,1,1,1,1,1,5,1,1,3,1,3,2,3,1,1,5,1,1,5,2,1,1,1,   4,1,5,1,4,4,3,4,4,1,5,5,3,1,4,4,3,4,4,1,4,1,5,1,4
+	defb 0, "YTFV", 1,1,1,1,3,1,1,3,2,1,5,2,1,5,1,1,3,2,1,1,1,5,1,1,1,   1,1,4,4,5,4,4,5,1,4,3,1,4,3,4,4,5,1,4,4,4,3,4,1,1
+	defb 0, "TVLC", 1,1,2,1,1,1,1,2,1,1,5,1,1,1,5,3,2,5,2,3,2,3,5,3,2,   4,3,1,3,4,1,4,1,4,1,3,1,4,1,3,5,1,4,1,5,1,5,4,5,1
+	defb 0, "KTIV", 2,3,5,3,2,1,1,1,1,1,1,5,2,5,1,1,1,5,1,1,3,2,1,2,3,   1,5,3,5,1,1,4,4,4,1,1,3,1,3,1,5,4,3,4,5,4,1,4,1,4
+	defb 0, "CIKS", 1,1,3,1,1,3,2,1,2,3,1,2,3,2,1,5,5,1,5,5,1,1,1,1,1,   1,4,4,4,1,4,1,4,1,4,3,1,4,1,3,1,3,4,3,1,5,5,1,5,5
+	defb 0, "FYLV", 3,1,1,1,1,2,3,1,5,2,1,1,5,1,1,1,5,2,3,1,1,1,2,1,3,   4,1,4,1,5,1,4,4,3,1,3,4,5,4,3,1,3,1,4,1,5,4,1,4,4
+	defb 0, "EFZG", 2,1,5,1,2,1,3,1,3,1,1,2,5,2,1,1,1,1,1,1,1,5,3,5,1,   1,4,3,4,1,4,4,1,4,4,5,1,4,1,5,1,5,1,5,1,4,3,4,3,4
+	defb 0, "BIOF", 3,2,1,2,3,1,5,1,1,3,2,1,1,1,2,1,3,1,1,5,5,2,1,2,5,   4,1,1,1,4,3,3,4,5,5,1,4,4,1,1,5,5,4,3,3,4,1,1,1,4
+	defb 0, "WQHK", 5,1,1,1,5,2,1,2,1,2,1,1,1,1,1,1,2,3,2,1,5,3,1,3,5,   4,1,3,1,4,1,4,1,4,1,3,1,5,1,3,5,1,4,1,5,4,4,5,4,4
+	defb 0, "TRNO", 3,2,1,5,1,2,1,3,2,5,1,3,1,3,1,5,2,3,1,2,1,5,1,2,3,   5,1,1,4,1,1,4,3,1,3,1,3,3,5,4,4,1,5,3,1,1,3,4,1,5
+	defb 0, "GLRO", 1,1,3,1,1,3,2,1,2,3,2,5,1,5,2,5,2,1,2,5,1,1,3,1,1,   4,1,3,1,3,5,1,1,1,5,1,4,4,4,1,5,1,1,1,5,3,1,3,1,4
+	defb 0, "AZJR", 2,1,5,1,1,1,1,3,2,1,5,3,1,3,5,1,2,3,1,1,1,1,5,1,2,   1,5,3,3,1,1,5,4,1,4,4,4,4,4,4,4,1,4,5,1,1,3,3,5,1
+	defb 0, "PTBL", 1,1,1,1,1,1,3,5,2,1,5,2,2,3,5,1,3,5,2,1,1,1,1,1,1,   1,5,4,4,1,3,4,4,1,4,3,1,1,5,5,3,4,4,1,4,1,5,4,4,1
+	defb 0, "YZRL", 5,2,5,1,1,2,1,5,1,2,5,5,3,2,3,1,1,2,1,1,1,2,3,1,2,   3,1,3,4,1,1,4,4,1,1,3,4,5,1,5,4,1,1,4,5,1,1,5,5,1
+	defb 0, "WRHS", 3,2,1,3,1,1,5,2,1,1,2,1,5,1,1,1,5,2,1,1,3,2,1,3,1,   4,1,5,1,3,4,3,1,4,1,1,4,4,4,5,4,3,1,4,1,4,1,5,1,3
+	defb 0, "HRJA", 3,1,1,1,2,5,3,1,5,1,1,2,1,2,1,1,5,1,3,3,2,1,1,1,5,   5,1,4,1,1,4,5,4,4,3,4,1,3,1,4,3,5,4,5,4,1,1,4,1,3
+	defb 0, "CRJS", 1,1,3,1,1,1,2,1,2,1,5,3,5,3,5,1,2,1,2,1,1,1,3,1,1,   1,4,5,4,1,3,1,4,1,3,3,4,4,4,3,4,1,5,1,4,1,4,5,4,1
+	defb 0, "YSKR", 1,1,3,1,2,1,1,3,1,1,5,5,2,5,5,1,1,3,1,1,2,1,3,1,1,   4,4,5,4,1,1,5,4,3,1,3,4,1,4,3,1,3,4,5,1,1,4,5,4,4
+	defb 0, "NSOR", 1,1,3,1,1,1,3,2,3,1,5,1,2,1,5,1,2,1,2,1,1,5,3,5,1,   4,1,5,1,4,4,4,1,4,4,4,3,1,3,4,5,1,1,1,5,3,4,5,4,3
+	defb 255	; end of data marker
+
+
+
+
