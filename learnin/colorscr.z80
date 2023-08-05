@@ -8,38 +8,36 @@
 EMPTY_MEM = $A000       ; available empty memory block
 STACK_POS = $FF00       ; near end of available memory
 SCR_START = $4000       ; start of screen memory
-SCR_SIZE  = $17FF       ; total screen memory
+SCR_SIZE  = $1800       ; total screen memory
 ATR_START = $5800       ; start of screen attribute memory
-ATR_SIZE  = $02FF       ; total attribute memory
+ATR_SIZE  = $0300       ; total attribute memory
 BORDER    = $229B       ; border routine location
-WAIT_TIME = $0F         ; delay time
+WAIT_TIME = $02         ; delay time
 AREA_CHAR = $0100       ; characters per area
 NEXT_AREA = $0800       ; space until next area
 COLORS    = $06         ; number of colors
 
 ; main routine
 start:
-        exx
+        exx             ; swap registers
         push hl         ; store hl' for basic
         ld (spbak),sp   ; backup original stack
         ld sp,STACK_POS ; set custom program stack
 
         ld iy,colormap  ; set color pointer register
-        ; ld hl,(colcount)
-        ; ld b,(hl)       ; set number of colors
-        ld b,2          ; number of colors
+        ld b,spbak-colormap     ; number of colors
         call color      ; color loop routine
 
         ld sp,(spbak)   ; restore system stack pointer
         pop hl          ; restore hl' for basic
-        exx
+        exx             ; swap registers
         ret
 
 ; program data
+colormap:
+        db $38,$01,$0A,$13,$1C,$25,$2E,$37,$38,$41,$4A,$53,$5C,$65,$6E,$77,$78,$07
 spbak:
         dw 0
-colormap:
-        dw $38,$01,$0A,$13,$1C
 
 ; screen reset routine
 reset:
@@ -64,7 +62,6 @@ color:
         push bc         ; store current loop
         call reset      ; reset screen
         ld hl,SCR_START ; set hl to start of screen memory
-        ld ix,ATR_START ; set ix to start of attribute memory
         ld b,3          ; number of areas
         call screen     ; run screen print routine
         inc iy          ; move to next color code
@@ -82,21 +79,18 @@ screen:
         ld bc,NEXT_AREA ; stage next area differential
         add hl,bc       ; add distance to next area
         pop bc          ; restore current loop
-        djnz screen
+        djnz screen     ; loop over 3 screen areas
         ret
 
 ; area print routine
 area:
         push bc         ; store current loop
         push hl         ; store top line of character
-        ld a,(iy)       ; pull in color attributes
-        ld (ix),a       ; set attribute color
         ld b,8          ; number of color runs
         call loop       ; run character print routine
         pop hl          ; restore top line of character
         pop bc          ; restore current loop
         inc hl          ; move to next character position
-        inc ix          ; move to next character attribute
         dec bc          ; decrement loop counter
         ld a,b          ; prepare to compare high/low bytes
         or c            ; check if loop counter is zero
@@ -105,7 +99,7 @@ area:
 
 ; main character print routine
 loop:
-        ; call wait       ; delay loop
+        call wait       ; delay loop
         scf             ; set carry flag
         rr (hl)         ; rotate bits right with carry
         jr nc,loop      ; loop while carry is 0
@@ -115,12 +109,12 @@ loop:
 
 ; delay subroutine
 wait:
-        push bc          
-        ld b,WAIT_TIME
+        push bc         ; store current loop
+        ld b,WAIT_TIME  ; set number of nops
 waitloop:
         nop
-        djnz waitloop
-        pop bc
+        djnz waitloop   ; loop for all nops
+        pop bc          ; restore current loop
         ret        
 
 ; deploy snapshot file
