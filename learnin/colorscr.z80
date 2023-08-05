@@ -1,0 +1,127 @@
+; Print-by-Character Screen Color Display Test
+
+        DEVICE  ZXSPECTRUM48
+
+        org $8000
+
+; constants
+EMPTY_MEM = $A000       ; available empty memory block
+STACK_POS = $FF00       ; near end of available memory
+SCR_START = $4000       ; start of screen memory
+SCR_SIZE  = $17FF       ; total screen memory
+ATR_START = $5800       ; start of screen attribute memory
+ATR_SIZE  = $02FF       ; total attribute memory
+BORDER    = $229B       ; border routine location
+WAIT_TIME = $0F         ; delay time
+AREA_CHAR = $0100       ; characters per area
+NEXT_AREA = $0800       ; space until next area
+COLORS    = $06         ; number of colors
+
+; main routine
+start:
+        exx
+        push hl         ; store hl' for basic
+        ld (spbak),sp   ; backup original stack
+        ld sp,STACK_POS ; set custom program stack
+
+        ld iy,colormap  ; set color pointer register
+        ; ld hl,(colcount)
+        ; ld b,(hl)       ; set number of colors
+        ld b,2          ; number of colors
+        call color      ; color loop routine
+
+        ld sp,(spbak)   ; restore system stack pointer
+        pop hl          ; restore hl' for basic
+        exx
+        ret
+
+; program data
+spbak:
+        dw 0
+colormap:
+        dw $38,$01,$0A,$13,$1C
+
+; screen reset routine
+reset:
+        ld de,SCR_START ; set de to start of screen memory
+        ld hl,EMPTY_MEM ; set hl to empty memory block
+        ld bc,SCR_SIZE  ; set bc to screen size
+        ldir            ; block loading of screen memory
+        ld de,ATR_START ; set de to start of atr memory
+        ld bc,ATR_SIZE  ; set bc to attribute size
+attr:
+        ld a,(iy)       ; pull attribute value
+        ld (de),a       ; set attribute byte
+        inc de          ; move to next byte
+        dec bc          ; reduce memory left
+        ld a,b          ; load b into acc
+        or c            ; check bc is zero
+        jr nz,attr      ; loop for attribute memory size
+        ret
+
+; color loop routine
+color:
+        push bc         ; store current loop
+        call reset      ; reset screen
+        ld hl,SCR_START ; set hl to start of screen memory
+        ld ix,ATR_START ; set ix to start of attribute memory
+        ld b,3          ; number of areas
+        call screen     ; run screen print routine
+        inc iy          ; move to next color code
+        pop bc          ; restore current loop
+        djnz color      ; loop for the number of colors
+        ret
+
+; screen print routine
+screen:
+        push bc         ; store current loop
+        push hl         ; store first line of area
+        ld bc,AREA_CHAR ; number of characters per area    
+        call area       ; run area print routine
+        pop hl          ; restore first area character
+        ld bc,NEXT_AREA ; stage next area differential
+        add hl,bc       ; add distance to next area
+        pop bc          ; restore current loop
+        djnz screen
+        ret
+
+; area print routine
+area:
+        push bc         ; store current loop
+        push hl         ; store top line of character
+        ld a,(iy)       ; pull in color attributes
+        ld (ix),a       ; set attribute color
+        ld b,8          ; number of color runs
+        call loop       ; run character print routine
+        pop hl          ; restore top line of character
+        pop bc          ; restore current loop
+        inc hl          ; move to next character position
+        inc ix          ; move to next character attribute
+        dec bc          ; decrement loop counter
+        ld a,b          ; prepare to compare high/low bytes
+        or c            ; check if loop counter is zero
+        jr nz,area      ; loop for all area characters
+        ret
+
+; main character print routine
+loop:
+        ; call wait       ; delay loop
+        scf             ; set carry flag
+        rr (hl)         ; rotate bits right with carry
+        jr nc,loop      ; loop while carry is 0
+        inc h           ; increment high bit
+        djnz loop       ; loop for all 8 lines
+        ret
+
+; delay subroutine
+wait:
+        push bc          
+        ld b,WAIT_TIME
+waitloop:
+        nop
+        djnz waitloop
+        pop bc
+        ret        
+
+; deploy snapshot file
+        SAVESNA "colorscr.sna", start
