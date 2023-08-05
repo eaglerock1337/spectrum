@@ -1,0 +1,133 @@
+; Rolling 1s and 0s Print-by-Character Screen Color Display Test
+
+        DEVICE  ZXSPECTRUM48
+
+        org $8000
+
+; constants
+STACK_POS       equ $FF50       ; near end of available memory
+SCR_START       equ $4000       ; start of screen memory
+SCR_RAM         equ $1800       ; total screen memory
+ATR_START       equ $5800       ; start of screen attribute memory
+ATR_RAM         equ $0300       ; total attribute memory
+WAIT_TIME       equ $01         ; number of delay loops
+AREA_CHAR       equ $0100       ; characters per area
+NEXT_AREA       equ $0800       ; space until next area
+COLORS  equ spbak-colormap      ; size of color map data block
+
+; main routine
+start:
+        exx             ; swap registers
+        push hl         ; store hl' for basic
+        ld (spbak),sp   ; backup original stack
+        ld sp,STACK_POS ; set custom program stack
+
+        ld iy,colormap  ; set color pointer register
+        ld b,COLORS/2   ; number of color words
+        call roll       ; rolling color loop routine
+
+        ld sp,(spbak)   ; restore system stack pointer
+        pop hl          ; restore hl' for basic
+        exx             ; swap registers
+        ret
+
+; program data
+colormap:
+        db $38,$01,$0A,$13,$1C,$25,$2E,$37      ; normal color cycle
+        db $38,$41,$4A,$53,$5C,$65,$6E,$77      ; bright color cycle
+        db $78,$07                              ; reset screen
+spbak:
+        dw 0            ; back up system stack pointer
+spbuff:
+        dw 0            ; back up program stack pointer
+mode:
+        db 0            ; print mode 1-set, 0-reset
+
+; rolling color loop routine
+roll:
+        push bc         ; store current loop
+        ld a,1          ; 1 = set mode
+        ld (mode),a     ; set mode to set
+        ld hl,SCR_START ; set hl to start of screen memory
+        ld b,3          ; number of areas
+        call screen     ; run screen print routine
+        inc iy          ; move to next color code
+        ld a,0          ; 0 = reset mode
+        ld (mode),a     ; set mode to reset
+        ld hl,SCR_START ; set hl to start of screen memory
+        ld b,3          ; number of areas
+        call screen     ; run screen print routine
+        inc iy          ; move to next color code
+        pop bc          ; restore current loop
+        djnz roll       ; loop for all color words
+        ret
+
+; screen print routine
+screen:
+        push bc         ; store current loop
+        push hl         ; store first line of area
+        ld bc,AREA_CHAR ; number of characters per area
+        ld a,$FF        ; store for checking underflow
+        call area       ; run area print routine
+        pop hl          ; restore first area character
+        ld bc,NEXT_AREA ; stage next area differential
+        add hl,bc       ; add distance to next area
+        pop bc          ; restore current loop
+        djnz screen     ; loop over 3 screen areas
+        ret
+
+; area print routine
+area:
+        push bc         ; store current loop
+        push hl         ; store top line of character
+        ld b,8          ; number of color runs
+        ld c,0          ; set c to reset mode
+        ld a,(mode)     ; pull current mode
+        xor c           ; compare mode    
+        jr nz,fillmode
+        call empty      ; empty screen routine
+        jr contin       
+fillmode:
+        call fill       ; fill screen routine
+contin:
+        pop hl          ; restore top line of character
+        pop bc          ; restore current loop
+        inc hl          ; move to next character position
+        dec bc          ; decrement loop counter
+        ld a,b          ; prepare to compare high/low bytes
+        or c            ; check if loop counter is zero
+        jr nz,area      ; loop for all area characters
+        ret
+
+; fill character print routine
+fill:
+        call wait       ; delay loop
+        scf             ; set carry flag
+        rr (hl)         ; rotate bits right with carry
+        jr nc,fill      ; loop while carry is 0
+        inc h           ; increment high bit
+        djnz fill       ; loop for all 8 lines
+        ret
+
+; empty character print routine
+empty:
+        call wait       ; delay loop
+        ccf             ; clear carry flag
+        rr (hl)         ; rotate bits right with carry
+        jr c,empty      ; loop while carry is 1
+        inc h           ; increment high bit
+        djnz empty      ; loop for all 8 lines
+        ret
+
+; delay subroutine
+wait:
+        push bc         ; store current loop
+        ld b,WAIT_TIME  ; set number of nops
+waitloop:
+        nop             ; do nothing
+        djnz waitloop   ; loop for all nops
+        pop bc          ; restore current loop
+        ret        
+
+; deploy snapshot file
+        SAVESNA "rollscr.sna", start

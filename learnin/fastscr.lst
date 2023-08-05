@@ -69,7 +69,7 @@
  66   8059 CD 5D 80             call fillram    ; fill screen memory
  67   805C C9                   ret
  68   805D
- 69   805D              ; ram fill routine
+ 69   805D              ; ram fill routine using stack
  70   805D              fillram:
  71   805D                      ; hl - start of memory block
  72   805D                      ; bc - number of words
