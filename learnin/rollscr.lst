@@ -33,12 +33,12 @@
  32   8018 C9                   ret
  33   8019
  34   8019              ; program data
- 35   8019              colormap:
- 36   8019 38 01 0A 13          db $38,$01,$0A,$13,$1C,$25,$2E,$37      ; normal color cycle
- 36   801D 1C 25 2E 37
- 37   8021 38 41 4A 53          db $38,$41,$4A,$53,$5C,$65,$6E,$77      ; bright color cycle
- 37   8025 5C 65 6E 77
- 38   8029 78 07                db $78,$07                              ; reset screen
+ 35   8019              colormap: ;Blk Blu Red Mag Grn Cyn Yel Wht
+ 36   8019 38 08 0A 1A          db $38,$08,$0A,$1A,$1C,$2C,$2E,$3E      ; normal color cycle
+ 36   801D 1C 2C 2E 3E
+ 37   8021 38 48 4A 5A          db $38,$48,$4A,$5A,$5C,$6C,$6E,$7E      ; bright color cycle
+ 37   8025 5C 6C 6E 7E
+ 38   8029 78 38                db $78,$38                              ; reset screen
  39   802B              spbak:
  40   802B 00 00                dw 0            ; back up system stack pointer
  41   802D              spbuff:
@@ -52,86 +52,103 @@
  49   8031 3E 01                ld a,1          ; 1 = set mode
  50   8033 32 2F 80             ld (mode),a     ; set mode to set
  51   8036 21 00 40             ld hl,SCR_START ; set hl to start of screen memory
- 52   8039 06 03                ld b,3          ; number of areas
- 53   803B CD 53 80             call screen     ; run screen print routine
- 54   803E FD 23                inc iy          ; move to next color code
- 55   8040 3E 00                ld a,0          ; 0 = reset mode
- 56   8042 32 2F 80             ld (mode),a     ; set mode to reset
- 57   8045 21 00 40             ld hl,SCR_START ; set hl to start of screen memory
- 58   8048 06 03                ld b,3          ; number of areas
- 59   804A CD 53 80             call screen     ; run screen print routine
- 60   804D FD 23                inc iy          ; move to next color code
- 61   804F C1                   pop bc          ; restore current loop
- 62   8050 10 DE                djnz roll       ; loop for all color words
- 63   8052 C9                   ret
- 64   8053
- 65   8053              ; screen print routine
- 66   8053              screen:
- 67   8053 C5                   push bc         ; store current loop
- 68   8054 E5                   push hl         ; store first line of area
- 69   8055 01 00 01             ld bc,AREA_CHAR ; number of characters per area
- 70   8058 3E FF                ld a,$FF        ; store for checking underflow
- 71   805A CD 66 80             call area       ; run area print routine
- 72   805D E1                   pop hl          ; restore first area character
- 73   805E 01 00 08             ld bc,NEXT_AREA ; stage next area differential
- 74   8061 09                   add hl,bc       ; add distance to next area
- 75   8062 C1                   pop bc          ; restore current loop
- 76   8063 10 EE                djnz screen     ; loop over 3 screen areas
- 77   8065 C9                   ret
- 78   8066
- 79   8066              ; area print routine
- 80   8066              area:
- 81   8066 C5                   push bc         ; store current loop
- 82   8067 E5                   push hl         ; store top line of character
- 83   8068 06 08                ld b,8          ; number of color runs
- 84   806A 0E 00                ld c,0          ; set c to reset mode
- 85   806C 3A 2F 80             ld a,(mode)     ; pull current mode
- 86   806F A9                   xor c           ; compare mode
- 87   8070 20 05                jr nz,fillmode
- 88   8072 CD 8F 80             call empty      ; empty screen routine
- 89   8075 18 03                jr contin
- 90   8077              fillmode:
- 91   8077 CD 83 80             call fill       ; fill screen routine
- 92   807A              contin:
- 93   807A E1                   pop hl          ; restore top line of character
- 94   807B C1                   pop bc          ; restore current loop
- 95   807C 23                   inc hl          ; move to next character position
- 96   807D 0B                   dec bc          ; decrement loop counter
- 97   807E 78                   ld a,b          ; prepare to compare high/low bytes
- 98   807F B1                   or c            ; check if loop counter is zero
- 99   8080 20 E4                jr nz,area      ; loop for all area characters
-100   8082 C9                   ret
-101   8083
-102   8083              ; fill character print routine
-103   8083              fill:
-104   8083 CD 9B 80             call wait       ; delay loop
-105   8086 37                   scf             ; set carry flag
-106   8087 CB 1E                rr (hl)         ; rotate bits right with carry
-107   8089 30 F8                jr nc,fill      ; loop while carry is 0
-108   808B 24                   inc h           ; increment high bit
-109   808C 10 F5                djnz fill       ; loop for all 8 lines
-110   808E C9                   ret
-111   808F
-112   808F              ; empty character print routine
-113   808F              empty:
-114   808F CD 9B 80             call wait       ; delay loop
-115   8092 3F                   ccf             ; clear carry flag
-116   8093 CB 1E                rr (hl)         ; rotate bits right with carry
-117   8095 38 F8                jr c,empty      ; loop while carry is 1
-118   8097 24                   inc h           ; increment high bit
-119   8098 10 F5                djnz empty      ; loop for all 8 lines
-120   809A C9                   ret
-121   809B
-122   809B              ; delay subroutine
-123   809B              wait:
-124   809B C5                   push bc         ; store current loop
-125   809C 06 01                ld b,WAIT_TIME  ; set number of nops
-126   809E              waitloop:
-127   809E 00                   nop             ; do nothing
-128   809F 10 FD                djnz waitloop   ; loop for all nops
-129   80A1 C1                   pop bc          ; restore current loop
-130   80A2 C9                   ret
-131   80A3
-132   80A3              ; deploy snapshot file
-133   80A3                      SAVESNA "rollscr.sna", start
+ 52   8039 11 00 58             ld de,ATR_START ; set de to start of attribute memory
+ 53   803C 06 03                ld b,3          ; number of areas
+ 54   803E CD 56 80             call screen     ; run screen print routine
+ 55   8041 FD 23                inc iy          ; move to next color code
+ 56   8043 3E 00                ld a,0          ; 0 = reset mode
+ 57   8045 32 2F 80             ld (mode),a     ; set mode to reset
+ 58   8048 21 00 40             ld hl,SCR_START ; set hl to start of screen memory
+ 59   804B 06 03                ld b,3          ; number of areas
+ 60   804D CD 56 80             call screen     ; run screen print routine
+ 61   8050 FD 23                inc iy          ; move to next color code
+ 62   8052 C1                   pop bc          ; restore current loop
+ 63   8053 10 DB                djnz roll       ; loop for all color words
+ 64   8055 C9                   ret
+ 65   8056
+ 66   8056              ; screen print routine
+ 67   8056              screen:
+ 68   8056 C5                   push bc         ; store current loop
+ 69   8057 E5                   push hl         ; store first line of area
+ 70   8058 11 00 58             ld de,ATR_START ; set de to start of atr memory
+ 71   805B 01 00 03             ld bc,ATR_RAM   ; set bc to attribute size
+ 72   805E CD 72 80             call attr       ; fill attribute memory
+ 73   8061 01 00 01             ld bc,AREA_CHAR ; number of characters per area
+ 74   8064 3E FF                ld a,$FF        ; store for checking underflow
+ 75   8066 CD 7D 80             call area       ; run area print routine
+ 76   8069 E1                   pop hl          ; restore first area character
+ 77   806A 01 00 08             ld bc,NEXT_AREA ; stage next area differential
+ 78   806D 09                   add hl,bc       ; add distance to next area
+ 79   806E C1                   pop bc          ; restore current loop
+ 80   806F 10 E5                djnz screen     ; loop over 3 screen areas
+ 81   8071 C9                   ret
+ 82   8072
+ 83   8072              ; attribute fill routine
+ 84   8072              attr:
+ 85   8072 FD 7E 00             ld a,(iy)       ; pull attribute value
+ 86   8075 12                   ld (de),a       ; set attribute byte
+ 87   8076 13                   inc de          ; move to next byte
+ 88   8077 0B                   dec bc          ; reduce memory left
+ 89   8078 78                   ld a,b          ; load b into acc
+ 90   8079 B1                   or c            ; check bc is zero
+ 91   807A 20 F6                jr nz,attr      ; loop for attribute memory size
+ 92   807C C9                   ret
+ 93   807D
+ 94   807D              ; area print routine
+ 95   807D              area:
+ 96   807D C5                   push bc         ; store current loop
+ 97   807E E5                   push hl         ; store top line of character
+ 98   807F 06 08                ld b,8          ; number of color runs
+ 99   8081 FD 7E 00             ld a,(iy)       ; pull current attribute
+100   8084 12                   ld (de),a       ; set character attribute
+101   8085 0E 00                ld c,0          ; set c to reset mode
+102   8087 3A 2F 80             ld a,(mode)     ; pull current mode
+103   808A A9                   xor c           ; compare mode
+104   808B 20 05                jr nz,fillmode
+105   808D CD AA 80             call empty      ; empty screen routine
+106   8090 18 03                jr contin
+107   8092              fillmode:
+108   8092 CD 9E 80             call fill       ; fill screen routine
+109   8095              contin:
+110   8095 E1                   pop hl          ; restore top line of character
+111   8096 C1                   pop bc          ; restore current loop
+112   8097 23                   inc hl          ; move to next character position
+113   8098 0B                   dec bc          ; decrement loop counter
+114   8099 78                   ld a,b          ; prepare to compare high/low bytes
+115   809A B1                   or c            ; check if loop counter is zero
+116   809B 20 E0                jr nz,area      ; loop for all area characters
+117   809D C9                   ret
+118   809E
+119   809E              ; fill character print routine
+120   809E              fill:
+121   809E CD B6 80             call wait       ; delay loop
+122   80A1 37                   scf             ; set carry flag
+123   80A2 CB 1E                rr (hl)         ; rotate bits right with carry
+124   80A4 30 F8                jr nc,fill      ; loop while carry is 0
+125   80A6 24                   inc h           ; increment high bit
+126   80A7 10 F5                djnz fill       ; loop for all 8 lines
+127   80A9 C9                   ret
+128   80AA
+129   80AA              ; empty character print routine
+130   80AA              empty:
+131   80AA CD B6 80             call wait       ; delay loop
+132   80AD 3F                   ccf             ; clear carry flag
+133   80AE CB 1E                rr (hl)         ; rotate bits right with carry
+134   80B0 38 F8                jr c,empty      ; loop while carry is 1
+135   80B2 24                   inc h           ; increment high bit
+136   80B3 10 F5                djnz empty      ; loop for all 8 lines
+137   80B5 C9                   ret
+138   80B6
+139   80B6              ; delay subroutine
+140   80B6              wait:
+141   80B6 C5                   push bc         ; store current loop
+142   80B7 06 01                ld b,WAIT_TIME  ; set number of nops
+143   80B9              waitloop:
+144   80B9 00                   nop             ; do nothing
+145   80BA 10 FD                djnz waitloop   ; loop for all nops
+146   80BC C1                   pop bc          ; restore current loop
+147   80BD C9                   ret
+148   80BE
+149   80BE              ; deploy snapshot file
+150   80BE                      SAVESNA "rollscr.sna", start
 # file closed: rollscr.z80

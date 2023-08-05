@@ -32,10 +32,10 @@ start:
         ret
 
 ; program data
-colormap:
-        db $38,$01,$0A,$13,$1C,$25,$2E,$37      ; normal color cycle
-        db $38,$41,$4A,$53,$5C,$65,$6E,$77      ; bright color cycle
-        db $78,$07                              ; reset screen
+colormap: ;Blk Blu Red Mag Grn Cyn Yel Wht
+        db $38,$08,$0A,$1A,$1C,$2C,$2E,$3E      ; normal color cycle
+        db $38,$48,$4A,$5A,$5C,$6C,$6E,$7E      ; bright color cycle
+        db $78,$38                              ; reset screen
 spbak:
         dw 0            ; back up system stack pointer
 spbuff:
@@ -49,6 +49,7 @@ roll:
         ld a,1          ; 1 = set mode
         ld (mode),a     ; set mode to set
         ld hl,SCR_START ; set hl to start of screen memory
+        ld de,ATR_START ; set de to start of attribute memory
         ld b,3          ; number of areas
         call screen     ; run screen print routine
         inc iy          ; move to next color code
@@ -66,6 +67,9 @@ roll:
 screen:
         push bc         ; store current loop
         push hl         ; store first line of area
+        ld de,ATR_START ; set de to start of atr memory
+        ld bc,ATR_RAM   ; set bc to attribute size
+        call attr       ; fill attribute memory
         ld bc,AREA_CHAR ; number of characters per area
         ld a,$FF        ; store for checking underflow
         call area       ; run area print routine
@@ -76,11 +80,24 @@ screen:
         djnz screen     ; loop over 3 screen areas
         ret
 
+; attribute fill routine
+attr:
+        ld a,(iy)       ; pull attribute value
+        ld (de),a       ; set attribute byte
+        inc de          ; move to next byte
+        dec bc          ; reduce memory left
+        ld a,b          ; load b into acc
+        or c            ; check bc is zero
+        jr nz,attr      ; loop for attribute memory size
+        ret
+
 ; area print routine
 area:
         push bc         ; store current loop
         push hl         ; store top line of character
         ld b,8          ; number of color runs
+        ld a,(iy)       ; pull current attribute
+        ld (de),a       ; set character attribute
         ld c,0          ; set c to reset mode
         ld a,(mode)     ; pull current mode
         xor c           ; compare mode    
