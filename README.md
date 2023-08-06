@@ -56,3 +56,4 @@ Everything in this folder is copyrighted and shared by their respective authors.
 - ZX Spectrum Next Online Manual - [www.specnext.com](https://www.specnext.com/zx-spectrum-next-user-manual-first-edition/)
 - How to Write Spectrum Games - [Jonathan Cauldwell](https://jonathan-cauldwell.itch.io/how-to-write-spectrum-games)(Donations accepted)
 - The Complete Spectrum ROM Disassembly - [primrosebank.net](http://primrosebank.net/computers/zxspectrum/zxspectrum.htm)
+- First Steps in Z80 Assembly Language - [Darryl Sloan](http://ped.7gods.org/z80.pdf)
