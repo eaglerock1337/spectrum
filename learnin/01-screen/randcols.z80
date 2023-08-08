@@ -1,0 +1,62 @@
+; Random Screen Color Display Test
+
+        DEVICE  ZXSPECTRUM48
+
+        org $8000
+
+; constants
+STACK_POS       equ $FF50       ; near end of available memory
+SCR_START       equ $4000       ; start of screen memory
+SCR_RAM         equ $1800       ; total screen memory
+ATR_START       equ $5800       ; start of screen attribute memory
+ATR_RAM         equ $0300       ; total attribute memory
+WAIT_TIME       equ $01         ; number of delay loops
+AREA_CHAR       equ $0100       ; characters per area
+NEXT_AREA       equ $0800       ; space until next area
+
+; main routine
+start:
+        exx             ; swap registers
+        push hl         ; store hl' for basic
+        ld (spbak),sp   ; backup original stack
+        ld sp,STACK_POS ; set custom program stack
+
+        ld de,ATR_START ; set to start of attr memory
+        ld bc,ATR_RAM   ; amount of attr memory
+        call attr       ; rolling color loop routine
+
+        ld sp,(spbak)   ; restore system stack pointer
+        pop hl          ; restore hl' for basic
+        exx             ; swap registers
+        ret
+
+; program data
+spbak:
+        dw 0            ; back up system stack pointer
+
+; attribute fill routine
+attr:
+        ld a,r          ; pull random attribute value
+        ld (de),a       ; set attribute byte
+        inc de          ; move to next byte
+        dec bc          ; reduce memory left
+        push bc         ; store memory left
+        call wait       ; delay loop
+        pop bc          ; restore memory left
+        ld a,b          ; load b into acc
+        or c            ; check bc is zero
+        jr nz,attr      ; loop for attribute memory size
+        ret
+
+; delay subroutine
+wait:
+        push bc         ; store current loop
+        ld b,WAIT_TIME  ; set number of nops
+waitloop:
+        nop             ; do nothing
+        djnz waitloop   ; loop for all nops
+        pop bc          ; restore current loop
+        ret        
+
+; deploy snapshot file
+        SAVESNA "randcols.sna", start

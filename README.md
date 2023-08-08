@@ -35,6 +35,12 @@ This is me stumbling around figuring this Z80 assembly stuff out.
 - fastscr  - color screen writing routine with fast screen reset using stack.
 - rollscr  - color screen writing routine alternating fill and empty routines.
 
+### c folder
+
+A scratchpad of C programs I've written because sometimes you have to re-test the basics.
+
+- pointer - I had to confirm my brain was working correctly. Technically, it was.
+
 ### contrib folder
 
 A folder for other people's assembly code I'm testing or learning from.
@@ -57,3 +63,9 @@ Everything in this folder is copyrighted and shared by their respective authors.
 - How to Write Spectrum Games - [Jonathan Cauldwell](https://jonathan-cauldwell.itch.io/how-to-write-spectrum-games)(Donations accepted)
 - The Complete Spectrum ROM Disassembly - [primrosebank.net](http://primrosebank.net/computers/zxspectrum/zxspectrum.htm)
 - First Steps in Z80 Assembly Language - [Darryl Sloan](http://ped.7gods.org/z80.pdf)
+
+### tape folder
+
+ZX Spectrum tapefiles I have downloaded for local testing, sourced from [TZXVault](https://tzxvault.org).
+
+- Horizons Tape (1982 Sinclair demo tape by Psion)

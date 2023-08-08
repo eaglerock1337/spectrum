@@ -1,0 +1,81 @@
+# file opened: baggers.z80
+ 1    0000              ; Code along with Baggers, Part 2
+ 2    0000
+ 3    0000                      DEVICE  ZXSPECTRUMNEXT
+ 4    0000
+ 5    0000                      org $8000
+ 6    8000
+ 7    8000              start
+ 8    8000 ED 91 07 00  	nextreg 7,0
+ 9    8004 3E 00        	ld a,0
+10    8006 32 61 80     	ld (xpos),a
+11    8009 32 62 80     	ld (ypos),a
+12    800C              loop
+13    800C CD 58 80     	call delay
+14    800F 3A 61 80     	ld a,(xpos)
+15    8012 5F           	ld e,a
+16    8013 3A 62 80     	ld a,(ypos)
+17    8016 57           	ld d,a
+18    8017 CD 4D 80     	call plot
+19    801A 01 FE FB     	ld bc,$FBFE	; q key port
+20    801D ED 78        	in a,(c)
+21    801F CB 47        	bit 0,a		; q key bit
+22    8021 20 01        	jr nz,notq
+23    8023 15           	dec d
+24    8024              notq
+25    8024 01 FE FD     	ld bc,$FDFE	; a key port
+26    8027 ED 78        	in a,(c)
+27    8029 CB 47        	bit 0,a		; a key bit
+28    802B 20 01        	jr nz,nota
+29    802D 14           	inc d
+30    802E              nota
+31    802E 01 FE DF     	ld bc,$DFFE 	; o key port
+32    8031 ED 78        	in a,(c)
+33    8033 CB 4F        	bit 1,a
+34    8035 20 01        	jr nz,noto	; o key bit
+35    8037 1D           	dec e
+36    8038              noto
+37    8038 01 FE DF     	ld bc,$DFFE	; p key port
+38    803B ED 78        	in a,(c)
+39    803D CB 47        	bit 0,a
+40    803F 20 01        	jr nz,notp	; p key bit
+41    8041 1C           	inc e
+42    8042              notp
+43    8042 7B           	ld a,e
+44    8043 32 61 80     	ld (xpos),a
+45    8046 7A           	ld a,d
+46    8047 32 62 80     	ld (ypos),a
+47    804A C3 0C 80     	jp loop
+48    804D              plot
+49    804D 7A           	ld a,d
+50    804E FE C0        	cp 192		; upper boundary check
+51    8050 D0           	ret nc
+52    8051 ED 94        	pixelad
+53    8053 ED 95        	setae
+54    8055 B6           	or (hl)
+55    8056 77           	ld (hl),a
+56    8057 C9           	ret
+57    8058              delay
+58    8058 21 30 75     	ld hl,30000
+59    805B              dellp
+60    805B 2B           	dec hl
+61    805C 7C           	ld a,h
+62    805D B5           	or l
+63    805E 20 FB        	jr nz,dellp
+64    8060 C9           	ret
+65    8061              xpos
+66    8061 00           	db 0
+67    8062              ypos
+68    8062 00           	db 0
+69    8063
+70    8063              ; set up nex project
+71    8063              	; name of project, start address, initial stack pointer
+72    8063              	SAVENEX OPEN "baggers.nex", start, $FF40
+73    8063              	; minimum core version
+74    8063              	SAVENEX CORE 2,0,0
+75    8063              	; loading border color
+76    8063              	SAVENEX CFG 7,0,0,0
+77    8063              	; generate file automatically based on pages used
+78    8063              	SAVENEX AUTO
+79    8063
+# file closed: baggers.z80

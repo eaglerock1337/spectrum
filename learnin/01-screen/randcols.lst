@@ -1,0 +1,64 @@
+# file opened: randcols.z80
+ 1    0000              ; Random Screen Color Display Test
+ 2    0000
+ 3    0000                      DEVICE  ZXSPECTRUM48
+ 4    0000
+ 5    0000                      org $8000
+ 6    8000
+ 7    8000              ; constants
+ 8    8000              STACK_POS       equ $FF50       ; near end of available memory
+ 9    8000              SCR_START       equ $4000       ; start of screen memory
+10    8000              SCR_RAM         equ $1800       ; total screen memory
+11    8000              ATR_START       equ $5800       ; start of screen attribute memory
+12    8000              ATR_RAM         equ $0300       ; total attribute memory
+13    8000              WAIT_TIME       equ $01         ; number of delay loops
+14    8000              AREA_CHAR       equ $0100       ; characters per area
+15    8000              NEXT_AREA       equ $0800       ; space until next area
+16    8000
+17    8000              ; main routine
+18    8000              start:
+19    8000 D9                   exx             ; swap registers
+20    8001 E5                   push hl         ; store hl' for basic
+21    8002 ED 73 19 80          ld (spbak),sp   ; backup original stack
+22    8006 31 50 FF             ld sp,STACK_POS ; set custom program stack
+23    8009
+24    8009 11 00 58             ld de,ATR_START ; set to start of attr memory
+25    800C 01 00 03             ld bc,ATR_RAM   ; amount of attr memory
+26    800F CD 1B 80             call attr       ; rolling color loop routine
+27    8012
+28    8012 ED 7B 19 80          ld sp,(spbak)   ; restore system stack pointer
+29    8016 E1                   pop hl          ; restore hl' for basic
+30    8017 D9                   exx             ; swap registers
+31    8018 C9                   ret
+32    8019
+33    8019              ; program data
+34    8019              spbak:
+35    8019 00 00                dw 0            ; back up system stack pointer
+36    801B
+37    801B              ; attribute fill routine
+38    801B              attr:
+39    801B ED 5F                ld a,r          ; pull random attribute value
+40    801D 12                   ld (de),a       ; set attribute byte
+41    801E 13                   inc de          ; move to next byte
+42    801F 0B                   dec bc          ; reduce memory left
+43    8020 C5                   push bc         ; store memory left
+44    8021 CD 2A 80             call wait       ; delay loop
+45    8024 C1                   pop bc          ; restore memory left
+46    8025 78                   ld a,b          ; load b into acc
+47    8026 B1                   or c            ; check bc is zero
+48    8027 20 F2                jr nz,attr      ; loop for attribute memory size
+49    8029 C9                   ret
+50    802A
+51    802A              ; delay subroutine
+52    802A              wait:
+53    802A C5                   push bc         ; store current loop
+54    802B 06 01                ld b,WAIT_TIME  ; set number of nops
+55    802D              waitloop:
+56    802D 00                   nop             ; do nothing
+57    802E 10 FD                djnz waitloop   ; loop for all nops
+58    8030 C1                   pop bc          ; restore current loop
+59    8031 C9                   ret
+60    8032
+61    8032              ; deploy snapshot file
+62    8032                      SAVESNA "randcols.sna", start
+# file closed: randcols.z80

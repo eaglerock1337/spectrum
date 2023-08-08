@@ -39,8 +39,6 @@ colormap: ;Blk Blu Red Mag Grn Cyn Yel Wht
         db $78,$38                              ; reset screen
 spbak:
         dw 0            ; back up system stack pointer
-spbuff:
-        dw 0            ; back up program stack pointer
 mode:
         db 0            ; print mode 1-set, 0-reset
 
