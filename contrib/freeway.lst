@@ -1,0 +1,1923 @@
+# file opened: freeway.z80
+   1  0000              ;********** Freeway Frog **********
+   2  0000
+   3  0000                      DEVICE  ZXSPECTRUM48
+   4  0000
+   5  0000                      ORG     27000
+   6  6978
+   7  6978 F3           START   DI              ; Disable interrupts
+   8  6979 D9                   EXX             ; Swap registers
+   9  697A E5                   PUSH    HL      ; Preserve HL' register pair
+  10  697B D9                   EXX
+  11  697C CD 83 6F     AGAIN   CALL    INIT    ; Initialization
+  12  697F CD BD 70     MOVE    CALL    TFCTRL  ; Traffic control routine
+  13  6982 CD 50 74             CALL    RESPC   ; Restore underneath
+  14  6985 CD 0F 71             CALL    MOVTRF  ; Move traffic
+  15  6988 CD 4A 73             CALL    POLICE  ; Police car routine
+  16  698B CD C2 74             CALL    FROG    ; Frog module
+  17  698E CD 1D 77             CALL    CALSCR  ; Calculate & display score
+  18  6991 CD 87 77             CALL    SIREN   ; Siren or delay
+  19  6994 3A 77 6F             LD      A,(GAMFLG)      ; Finish when no frog
+  20  6997 A7                   AND     A
+  21  6998 20 05                JR      NZ,CONTIN
+  22  699A CD DE 77             CALL    OVER    ; High score management
+  23  699D 18 DD                JR      AGAIN   ; New game again
+  24  699F 3E 7F        CONTIN  LD      A,$7F   ; Trap space key pressed
+  25  69A1 DB FE                IN      A,($0FE)        ; Scan keyboard
+  26  69A3 E6 01                AND     1
+  27  69A5 20 D8                JR      NZ,MOVE
+  28  69A7 CD FE 77             CALL    FINAL   ; Reset screen & border color
+  29  69AA D9                   EXX
+  30  69AB E1                   POP     HL      ; Retrieve HL'
+  31  69AC D9                   EXX
+  32  69AD FB                   EI              ; Enable interrupts
+  33  69AE C9                   RET             ; Return to operating system
+  34  69AF
+  35  69AF              ;********** User-Defined Graphics & Attributes **********
+  36  69AF
+  37  69AF B7 69        FRGSHP  DEFW    FROG1   ; Up Frog
+  38  69B1 D7 69                DEFW    FROG2   ; Right Frog
+  39  69B3 F7 69                DEFW    FROG3   ; Down Frog
+  40  69B5 17 6A                DEFW    FROG4   ; Left Frog
+  41  69B7
+  42  69B7 6F 0F 1F 9F  FROG1   DB      111,15,31,159,220,216,120,48
+  42  69BB DC D8 78 30
+  43  69BF F6 F0 F8 F9          DB      246,240,248,249,59,27,30,12
+  43  69C3 3B 1B 1E 0C
+  44  69C7 00 01 23 25          DB      0,1,35,37,111,79,223,255
+  44  69CB 6F 4F DF FF
+  45  69CF 00 80 C4 A4          DB      0,128,196,164,246,242,251,255
+  45  69D3 F6 F2 FB FF
+  46  69D7
+  47  69D7 1F 1F 1F 7F  FROG2   DB      31,31,31,127,252,193,113,56
+  47  69DB FC C1 71 38
+  48  69DF FE F4 F8 F0          DB      254,244,248,240,192,156,240,192
+  48  69E3 C0 9C F0 C0
+  49  69E7 38 71 C1 FC          DB      56,113,193,252,127,31,31,31
+  49  69EB 7F 1F 1F 1F
+  50  69EF C0 F0 9C C0          DB      192,240,156,192,240,248,244,254
+  50  69F3 F0 F8 F4 FE
+  51  69F7
+  52  69F7 FF DF 4F 6F  FROG3   DB      255,223,79,111,37,35,1,0
+  52  69FB 25 23 01 00
+  53  69FF FF FB F2 F6          DB      255,251,242,246,164,196,128,0
+  53  6A03 A4 C4 80 00
+  54  6A07 30 78 D8 DC          DB      48,120,216,220,159,31,15,111
+  54  6A0B 9F 1F 0F 6F
+  55  6A0F 0C 1E 1B 3B          DB      12,30,27,59,249,248,240,246
+  55  6A13 F9 F8 F0 F6
+  56  6A17
+  57  6A17 7F 2F 1F 0F  FROG4   DB      127,47,31,15,3,57,15,3
+  57  6A1B 03 39 0F 03
+  58  6A1F F0 F0 F8 FE          DB      240,240,248,254,63,131,142,28
+  58  6A23 3F 83 8E 1C
+  59  6A27 03 0F 39 03          DB      3,15,57,3,15,31,47,127
+  59  6A2B 0F 1F 2F 7F
+  60  6A2F 1C 8E 83 3F          DB      28,142,131,63,254,248,240,240
+  60  6A33 FE F8 F0 F0
+  61  6A37
+  62  6A37 00 00 00 00  LBIKE   DB      0,0,0,0,0,0,0,0
+  62  6A3B 00 00 00 00
+  63  6A3F 1F 3F 73 51          DB      31,63,115,81,169,112,112,32
+  63  6A43 A9 70 70 20
+  64  6A47 FE FC FC EA          DB      254,252,252,234,213,206,14,4
+  64  6A4B D5 CE 0E 04
+  65  6A4F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  65  6A53 00 00 00 00
+  66  6A57 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  66  6A5B 00 00 00 00
+  67  6A5F 01 03 01 00          DB      1,3,1,0,3,4,14,31
+  67  6A63 03 04 0E 1F
+  68  6A67 80 C0 C0 E0          DB      128,192,192,224,224,112,119,255
+  68  6A6B E0 70 77 FF
+  69  6A6F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  69  6A73 00 00 00 00
+  70  6A77
+  71  6A77 00 07 07 00  LBATT   DB      0,7,7,0
+  72  6A7B 00 07 07 00          DB      0,7,7,0
+  73  6A7F
+  74  6A7F 00 00 00 00  RBIKE   DB      0,0,0,0,0,0,0,0
+  74  6A83 00 00 00 00
+  75  6A87 7F 3F 3F 57          DB      127,63,63,87,171,115,112,32
+  75  6A8B AB 73 70 20
+  76  6A8F F8 FC CE 8A          DB      248,252,206,138,149,14,14,4
+  76  6A93 95 0E 0E 04
+  77  6A97 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  77  6A9B 00 00 00 00
+  78  6A9F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  78  6AA3 00 00 00 00
+  79  6AA7 01 03 03 07          DB      1,3,3,7,7,14,238,255
+  79  6AAB 07 0E EE FF
+  80  6AAF 80 C0 80 00          DB      128,192,128,0,192,32,112,248
+  80  6AB3 C0 20 70 F8
+  81  6AB7 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  81  6ABB 00 00 00 00
+  82  6ABF
+  83  6ABF 00 07 07 00  RBATT   DB      0,7,7,0
+  84  6AC3 00 07 07 00          DB      0,7,7,0
+  85  6AC7
+  86  6AC7 00 00 00 00  LCAR    DB      0,0,0,0,0,0,0,0
+  86  6ACB 00 00 00 00
+  87  6ACF 00 00 03 07          DB      0,0,3,7,15,2,0,0
+  87  6AD3 0F 02 00 00
+  88  6AD7 07 FF FF 9F          DB      7,255,255,159,111,247,240,96
+  88  6ADB 6F F7 F0 60
+  89  6ADF 80 FF FF FF          DB      128,255,255,255,255,254,0,0
+  89  6AE3 FF FE 00 00
+  90  6AE7 F0 FE FF 9F          DB      240,254,255,159,111,246,240,96
+  90  6AEB 6F F6 F0 60
+  91  6AEF 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  91  6AF3 00 00 00 00
+  92  6AF7 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  92  6AFB 00 00 00 00
+  93  6AFF 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  93  6B03 00 00 00 00
+  94  6B07 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  94  6B0B 00 00 00 00
+  95  6B0F 00 00 00 00          DB      0,0,0,0,0,63,97,193
+  95  6B13 00 3F 61 C1
+  96  6B17 00 00 00 00          DB      0,0,0,0,0,0,128,192
+  96  6B1B 00 00 80 C0
+  97  6B1F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+  97  6B23 00 00 00 00
+  98  6B27
+  99  6B27 00 06 06 06  LCATT   DB      0,6,6,6,6,0
+  99  6B2B 06 00
+ 100  6B2D 00 00 00 06          DB      0,0,0,6,6,0
+ 100  6B31 06 00
+ 101  6B33
+ 102  6B33 00 00 00 00  RCAR    DB      0,0,0,0,0,0,0,0
+ 102  6B37 00 00 00 00
+ 103  6B3B 0F 7F FF F9          DB      15,127,255,249,246,111,15,6
+ 103  6B3F F6 6F 0F 06
+ 104  6B43 01 FF FF FF          DB      1,255,255,255,255,127,0,0
+ 104  6B47 FF 7F 00 00
+ 105  6B4B E0 FF FF F9          DB      224,255,255,249,246,239,15,6
+ 105  6B4F F6 EF 0F 06
+ 106  6B53 00 00 C0 E0          DB      0,0,192,224,240,64,0,0
+ 106  6B57 F0 40 00 00
+ 107  6B5B 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 107  6B5F 00 00 00 00
+ 108  6B63 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 108  6B67 00 00 00 00
+ 109  6B6B 00 00 00 00          DB      0,0,0,0,0,0,1,3
+ 109  6B6F 00 00 01 03
+ 110  6B73 00 00 00 00          DB      0,0,0,0,0,252,134,131
+ 110  6B77 00 FC 86 83
+ 111  6B7B 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 111  6B7F 00 00 00 00
+ 112  6B83 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 112  6B87 00 00 00 00
+ 113  6B8B 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 113  6B8F 00 00 00 00
+ 114  6B93
+ 115  6B93 00 02 02 02  RCATT   DB      0,2,2,2,2,0
+ 115  6B97 02 00
+ 116  6B99 00 02 02 00          DB      0,2,2,0,0,0
+ 116  6B9D 00 00
+ 117  6B9F
+ 118  6B9F 00 00 00 00  LTRUCK  DB      0,0,0,0,0,0,0,0
+ 118  6BA3 00 00 00 00
+ 119  6BA7 1F 1F 1F 3E          DB      31,31,31,62,61,59,3,1
+ 119  6BAB 3D 3B 03 01
+ 120  6BAF F8 FC FE 7F          DB      248,252,254,127,184,216,192,128
+ 120  6BB3 B8 D8 C0 80
+ 121  6BB7 FF FF FF FF          DB      255,255,255,255,6,15,15,6
+ 121  6BBB 06 0F 0F 06
+ 122  6BBF FF FF FF 00          DB      255,255,255,0,0,0,0,0
+ 122  6BC3 00 00 00 00
+ 123  6BC7 FF FF FF 00          DB      255,255,255,0,0,0,0,0
+ 123  6BCB 00 00 00 00
+ 124  6BCF FF FF FF 00          DB      255,255,255,0,6,15,15,6
+ 124  6BD3 06 0F 0F 06
+ 125  6BD7 FE FE FE 04          DB      254,254,254,4,50,122,122,48
+ 125  6BDB 32 7A 7A 30
+ 126  6BDF 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 126  6BE3 00 00 00 00
+ 127  6BE7 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 127  6BEB 00 00 00 00
+ 128  6BEF 00 00 07 09          DB      0,0,7,9,17,17,31,31
+ 128  6BF3 11 11 1F 1F
+ 129  6BF7 02 02 FA FA          DB      2,2,250,250,254,252,252,248
+ 129  6BFB FE FC FC F8
+ 130  6BFF FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 130  6C03 FF FF FF FF
+ 131  6C07 FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 131  6C0B FF FF FF FF
+ 132  6C0F FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 132  6C13 FF FF FF FF
+ 133  6C17 FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 133  6C1B FF FF FF FF
+ 134  6C1F FE FE FE FE          DB      254,254,254,254,254,254,254,254
+ 134  6C23 FE FE FE FE
+ 135  6C27 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 135  6C2B 00 00 00 00
+ 136  6C2F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 136  6C33 00 00 00 00
+ 137  6C37 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 137  6C3B 00 00 00 00
+ 138  6C3F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 138  6C43 00 00 00 00
+ 139  6C47 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 139  6C4B 00 FF FF FF
+ 140  6C4F 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 140  6C53 00 FF FF FF
+ 141  6C57 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 141  6C5B 00 FF FF FF
+ 142  6C5F 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 142  6C63 00 FF FF FF
+ 143  6C67 00 00 00 00          DB      0,0,0,0,0,254,254,254
+ 143  6C6B 00 FE FE FE
+ 144  6C6F 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 144  6C73 00 00 00 00
+ 145  6C77
+ 146  6C77 00 03 03 05  LTATT   DB      0,3,3,5,5,5,5,5,0
+ 146  6C7B 05 05 05 05
+ 146  6C7F 00
+ 147  6C80 00 03 03 05          DB      0,3,3,5,5,5,5,5,0
+ 147  6C84 05 05 05 05
+ 147  6C88 00
+ 148  6C89 00 00 00 05          DB      0,0,0,5,5,5,5,5,0
+ 148  6C8D 05 05 05 05
+ 148  6C91 00
+ 149  6C92
+ 150  6C92 00 00 00 00  RTRUCK  DB      0,0,0,0,0,0,0,0
+ 150  6C96 00 00 00 00
+ 151  6C9A 7F 7F 7F 20          DB      127,127,127,32,76,94,94,12
+ 151  6C9E 4C 5E 5E 0C
+ 152  6CA2 FF FF FF 00          DB      255,255,255,0,96,240,240,96
+ 152  6CA6 60 F0 F0 60
+ 153  6CAA FF FF FF 00          DB      255,255,255,0,0,0,0,0
+ 153  6CAE 00 00 00 00
+ 154  6CB2 FF FF FF 00          DB      255,255,255,0,0,0,0,0
+ 154  6CB6 00 00 00 00
+ 155  6CBA FF FF FF FF          DB      255,255,255,255,96,240,240,96
+ 155  6CBE 60 F0 F0 60
+ 156  6CC2 1F 3F 7F FE          DB      31,63,127,254,29,27,3,1
+ 156  6CC6 1D 1B 03 01
+ 157  6CCA F8 F8 F8 7C          DB      248,248,248,124,188,220,192,128
+ 157  6CCE BC DC C0 80
+ 158  6CD2 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 158  6CD6 00 00 00 00
+ 159  6CDA 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 159  6CDE 00 00 00 00
+ 160  6CE2 7F 7F 7F 7F          DB      127,127,127,127,127,127,127,127
+ 160  6CE6 7F 7F 7F 7F
+ 161  6CEA FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 161  6CEE FF FF FF FF
+ 162  6CF2 FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 162  6CF6 FF FF FF FF
+ 163  6CFA FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 163  6CFE FF FF FF FF
+ 164  6D02 FF FF FF FF          DB      255,255,255,255,255,255,255,255
+ 164  6D06 FF FF FF FF
+ 165  6D0A 40 40 5F 5F          DB      64,64,95,95,127,63,63,31
+ 165  6D0E 7F 3F 3F 1F
+ 166  6D12 00 00 E0 90          DB      0,0,224,144,136,136,248,248
+ 166  6D16 88 88 F8 F8
+ 167  6D1A 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 167  6D1E 00 00 00 00
+ 168  6D22 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 168  6D26 00 00 00 00
+ 169  6D2A 00 00 00 00          DB      0,0,0,0,0,127,127,127
+ 169  6D2E 00 7F 7F 7F
+ 170  6D32 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 170  6D36 00 FF FF FF
+ 171  6D3A 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 171  6D3E 00 FF FF FF
+ 172  6D42 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 172  6D46 00 FF FF FF
+ 173  6D4A 00 00 00 00          DB      0,0,0,0,0,255,255,255
+ 173  6D4E 00 FF FF FF
+ 174  6D52 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 174  6D56 00 00 00 00
+ 175  6D5A 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 175  6D5E 00 00 00 00
+ 176  6D62 00 00 00 00          DB      0,0,0,0,0,0,0,0
+ 176  6D66 00 00 00 00
+ 177  6D6A
+ 178  6D6A 00 05 05 05  RTATT   DB      0,5,5,5,5,5,3,3,0
+ 178  6D6E 05 05 03 03
+ 178  6D72 00
+ 179  6D73 00 05 05 05          DB      0,5,5,5,5,5,3,3,0
+ 179  6D77 05 05 03 03
+ 179  6D7B 00
+ 180  6D7C 00 05 05 05          DB      0,5,5,5,5,5,0,0,0
+ 180  6D80 05 05 00 00
+ 180  6D84 00
+ 181  6D85
+ 182  6D85 00 00 00 00  BLANK   DB      0,0,0,0
+ 183  6D89
+ 184  6D89 00 00 00...  FRGSTR  DS      36      ; 4*8+4
+ 185  6DAD 00 00 00...  PCSTR   DS      120     ; 12*8+12+7 (this should be 115?)
+ 186  6E25
+ 187  6E25              ;********** Object database **********
+ 188  6E25
+ 189  6E25 00           OB1EXT  DEFB    0       ; Object 1 Existence
+ 190  6E26 00                   DEFB    0       ; Cycle count
+ 191  6E27 00                   DEFB    0       ; Direction, 0=>right
+ 192  6E28 00                   DEFB    0       ; Object 1 pos real/abs flag
+ 193  6E29 00 00                DEFW    0       ; Position counter
+ 194  6E2B 00 00                DEFW    0       ; Shape pointer
+ 195  6E2D 00 00                DEFW    0       ; Attribute pointer
+ 196  6E2F 00                   DEFB    0       ; Row counter
+ 197  6E30 00                   DEFB    0       ; Column pointer
+ 198  6E31
+ 199  6E31 00 00 00 00  OB2EXT  DB      0,0,0,0
+ 200  6E35 00 00                DEFW    0
+ 201  6E37 00 00                DEFW    0
+ 202  6E39 00 00                DEFW    0
+ 203  6E3B 00 00                DB      0,0
+ 204  6E3D
+ 205  6E3D 00 00 00 00  OB3EXT  DB      0,0,0,0
+ 206  6E41 00 00                DEFW    0
+ 207  6E43 00 00                DEFW    0
+ 208  6E45 00 00                DEFW    0
+ 209  6E47 00 00                DB      0,0
+ 210  6E49
+ 211  6E49 00 00 00 00  OB4EXT  DB      0,0,0,0
+ 212  6E4D 00 00                DEFW    0
+ 213  6E4F 00 00                DEFW    0
+ 214  6E51 00 00                DEFW    0
+ 215  6E53 00 00                DB      0,0
+ 216  6E55
+ 217  6E55 00 00 00 00  OB5EXT  DB      0,0,0,0
+ 218  6E59 00 00                DEFW    0
+ 219  6E5B 00 00                DEFW    0
+ 220  6E5D 00 00                DEFW    0
+ 221  6E5F 00 00                DB      0,0
+ 222  6E61
+ 223  6E61 00 00 00 00  OB6EXT  DB      0,0,0,0
+ 224  6E65 00 00                DEFW    0
+ 225  6E67 00 00                DEFW    0
+ 226  6E69 00 00                DEFW    0
+ 227  6E6B 00 00                DB      0,0
+ 228  6E6D
+ 229  6E6D 00           PCAREXT DEFB    0       ; Police car database
+ 230  6E6E 00           PCARCYC DEFB    0
+ 231  6E6F 00           PCARDIR DEFB    0
+ 232  6E70 00           PCARRAP DEFB    0
+ 233  6E71 00 00        PCARPOS DEFW    0
+ 234  6E73 00 00        PCARSHP DEFW    0
+ 235  6E75 00 00        PCARATT DEFW    0
+ 236  6E77 02           PCARROW DEFB    2
+ 237  6E78 06           PCARCOL DEFB    6
+ 238  6E79
+ 239  6E79 00           FRGEXT  DEFB    0       ; Frog database
+ 240  6E7A 00           FRGCYC  DEFB    0
+ 241  6E7B 00           FRGDIR  DEFB    0       ; 0:up 1:rht 2:dn 3:lft
+ 242  6E7C 00 00        FRGPOS  DEFW    0
+ 243  6E7E 00 00        FROGSH  DEFW    0
+ 244  6E80 00           FRGATR  DEFB    0
+ 245  6E81
+ 246  6E81 08 08 01     FRGDB   DB      8,8,1
+ 247  6E84 AC 50        FRGSTN  DEFW    $50AC   ; Initial position of frog
+ 248  6E86 B7 69                DEFW    FROG1
+ 249  6E88 04                   DB      4       ; Attr. total 8 chars
+ 250  6E89
+ 251  6E89 95 6E        DBINDEX DEFW    RBDB    ; Right bike db
+ 252  6E8B A1 6E                DEFW    LBDB    ; Left bike db
+ 253  6E8D AD 6E                DEFW    RCDB    ; Right car db
+ 254  6E8F B9 6E                DEFW    LCDB    ; Left car db
+ 255  6E91 C5 6E                DEFW    RTDB    ; Right truck db
+ 256  6E93 D1 6E                DEFW    LTDB    ; Left truck db
+ 257  6E95
+ 258  6E95 02 01 00 00  RBDB    DB      2,1,0,0 ; Ext cnt dir raf
+ 259  6E99 1D 48                DEFW    $481D   ; Pos
+ 260  6E9B 7F 6A                DEFW    RBIKE   ; Right bike
+ 261  6E9D BF 6A                DEFW    RBATT   ; Attribute
+ 262  6E9F 02 04                DB      2,4     ; Row col
+ 263  6EA1
+ 264  6EA1 02 01 01 01  LBDB    DB      2,1,1,1
+ 265  6EA5 DF 48                DEFW    $48DF
+ 266  6EA7 37 6A                DEFW    LBIKE
+ 267  6EA9 77 6A                DEFW    LBATT
+ 268  6EAB 02 04                DB      2,4
+ 269  6EAD
+ 270  6EAD 03 01 00 00  RCDB    DB      3,1,0,0
+ 271  6EB1 1B 48                DEFW    $481B
+ 272  6EB3 33 6B                DEFW    RCAR
+ 273  6EB5 93 6B                DEFW    RCATT
+ 274  6EB7 02 06                DB      2,6
+ 275  6EB9
+ 276  6EB9 03 01 01 01  LCDB    DB      3,1,1,1
+ 277  6EBD DF 48                DEFW    $48DF
+ 278  6EBF C7 6A                DEFW    LCAR
+ 279  6EC1 27 6B                DEFW    LCATT
+ 280  6EC3 02 06                DB      2,6
+ 281  6EC5
+ 282  6EC5 06 01 00 00  RTDB    DB      6,1,0,0
+ 283  6EC9 18 48                DEFW    $4818
+ 284  6ECB 92 6C                DEFW    RTRUCK
+ 285  6ECD 6A 6D                DEFW    RTATT
+ 286  6ECF 03 09                DB      3,9
+ 287  6ED1
+ 288  6ED1 06 01 01 01  LTDB    DB      6,1,1,1
+ 289  6ED5 DF 48                DEFW    $48DF
+ 290  6ED7 9F 6B                DEFW    LTRUCK
+ 291  6ED9 77 6C                DEFW    LTATT
+ 292  6EDB 03 09                DB      3,9
+ 293  6EDD
+ 294  6EDD 01 01 01 01  LPCDB   DB      1,1,1,1
+ 295  6EE1 DF 48                DEFW    $48DF
+ 296  6EE3 C7 6A                DEFW    LCAR
+ 297  6EE5 E9 6E                DEFW    LPCATT
+ 298  6EE7 02 06                DB      2,6
+ 299  6EE9
+ 300  6EE9 00 05 05 05  LPCATT  DB      0,5,5,5,5,0
+ 300  6EED 05 00
+ 301  6EEF 00 00 00 05          DB      0,0,0,5,5,0
+ 301  6EF3 05 00
+ 302  6EF5
+ 303  6EF5 01 01 00 00  RPCDB   DB      1,1,0,0
+ 304  6EF9 1B 48                DEFW    $481B
+ 305  6EFB 33 6B                DEFW    RCAR
+ 306  6EFD 01 6F                DEFW    RPCATT
+ 307  6EFF 02 06                DB      2,6
+ 308  6F01
+ 309  6F01 00 05 05 05  RPCATT  DB      0,5,5,5,5,0
+ 309  6F05 05 00
+ 310  6F07 00 05 05 00          DB      0,5,5,0,0,0
+ 310  6F0B 00 00
+ 311  6F0D
+ 312  6F0D              ;********** Tones **********
+ 313  6F0D
+ 314  6F0D 29 00 F0 01  PCTON1  DB      41,0,$0F0,1     ; First police car tone
+ 315  6F11 17 00 8C 03  PCTON2  DB      23,0,$8C,3      ; Second police car tone
+ 316  6F15
+ 317  6F15 46 00 C7 04  HOMTON  DB      $46,0,$0C7,4    ; Frog reach home tone
+ 318  6F19 5D 00 8C 03          DB      $5D,0,$8C,3
+ 319  6F1D 7C 00 A1 02          DB      $7C,0,$0A1,2
+ 320  6F21 AA 00 F1 01          DB      $0AA,0,$0F1,1
+ 321  6F25 DE 00 6D 01          DB      $0DE,0,$6D,1
+ 322  6F29 28 01 09 01          DB      $28,1,9,1
+ 323  6F2D 8B 01 BF 00          DB      $8B,1,$0BF,0
+ 324  6F31 0F 02 88 00          DB      $0F,2,$88,0
+ 325  6F35 C0 02 5E 00          DB      $0C0,2,$5E,0
+ 326  6F39 84 03 43 00  DIETON  DB      $84,3,$43,0     ; Frog dying tone, reverse
+ 327  6F3D
+ 328  6F3D              ;********** Scoring & other variables ***********
+ 329  6F3D
+ 330  6F3D 53 63 6F 72  SCRMS1  DM      'Score '
+ 330  6F41 65 20
+ 331  6F43 30 30 30 30  SCORE   DB      $30,$30,$30,$30,$30,$30
+ 331  6F47 30 30
+ 332  6F49 48 49 47 48  SCRMS2  DM      'HIGH SCORE '
+ 332  6F4D 20 53 43 4F
+ 332  6F51 52 45 20
+ 333  6F54 30 30 30 30  HISCR   DB      $30,$30,$30,$30,$30
+ 333  6F58 30
+ 334  6F59
+ 335  6F59 00 00 00...  IMAGE   DS      5       ; Printing image of score
+ 336  6F5E 00           UPDWN   DEFB    0       ; Get when frog moves up or down
+ 337  6F5F
+ 338  6F5F 00           COLUMN  DB      0       ; Variable storing shape column
+ 339  6F60 00           ROW     DB      0       ; Variable storing shape row
+ 340  6F61 00           SKIP    DEFB    0       ; Char skipping during draw
+ 341  6F62 00           FILL    DEFB    0       ; Char drawn
+ 342  6F63 00 00        ATTPOS  DEFW    0       ; Holding the attribute file ptr
+ 343  6F65 00           ATTR    DB      0       ; Attr of character block drawn
+ 344  6F66 00 00        DRWPOS  DEFW    0       ; Draw Position
+ 345  6F68 00 00        STRPOS  DEFW    0       ; Store position
+ 346  6F6A
+ 347  6F6A 00 00        ATTPTR  DEFW    0
+ 348  6F6C 00 00        NEWPOS  DEFW    0       ; New traffic object position
+ 349  6F6E 00 00        POSPTR  DEFW    0       ; Traffic position database ptr
+ 350  6F70 00           GENFLG  DEFB    0       ; Traffic regeneration flag
+ 351  6F71
+ 352  6F71 00           JAMFLG  DEFB    0       ; Set to 1 for traffic move jam
+ 353  6F72
+ 354  6F72 00           CHASE   DEFB    0       ; Set when police car appears
+ 355  6F73 00           SOUNDF  DEFB    0       ; Set when user wants siren sound
+ 356  6F74 00           TONFLG  DEFB    0       ; Determine which siren tone
+ 357  6F75 00 00        RND     DEFW    0       ; Pointer to ROM for random num
+ 358  6F77
+ 359  6F77 01           GAMFLG  DEFB    1       ; End if zero
+ 360  6F78 00 00        OLDFRG  DEFW    0       ; Old frog pos
+ 361  6F7A 00 00        NEWFRG  DEFW    0       ; New frog pos
+ 362  6F7C 00           CRHFLG  DEFB    0       ; Set to 1 when frog has crashed
+ 363  6F7D 00           TEMDIR  DEFB    0       ; Frog temporary new direction
+ 364  6F7E 00 00        TEMPOS  DEFW    0       ; Frog temporary new position
+ 365  6F80 00 00        TEMSHP  DEFW    0       ; Frog temporary new shape
+ 366  6F82
+ 367  6F82              BOTHY1  EQU     $5020   ; 0,38. 0,39
+ 368  6F82              BOTHY2  EQU     $5120
+ 369  6F82              TOPHY1  EQU     $46A0   ; 0,128. 0,129
+ 370  6F82              TOPHY2  EQU     $47A0
+ 371  6F82              MIDHY1  EQU     $4B60   ; x,83. x,84
+ 372  6F82              MIDHY2  EQU     $4C60
+ 373  6F82
+ 374  6F82              CHRSET  EQU     $3C00   ; First 256 bytes nothing
+ 375  6F82
+ 376  6F82 05           NUMFRG  DEFB    5       ; Number of frogs
+ 377  6F83
+ 378  6F83              ;********** Initialization *********
+ 379  6F83
+ 380  6F83 AF           INIT    XOR     A               ; 000 FOR D2 D1 D0
+ 381  6F84 D3 FE                OUT     ($0FE),A        ; Set border color
+ 382  6F86 32 48 5C             LD      (23624),A       ; To black
+ 383  6F89 32 7C 6F             LD      (CRHFLG),A
+ 384  6F8C 32 79 6E             LD      (FRGEXT),A      ; Set frog nonexistant
+ 385  6F8F 3C                   INC     A
+ 386  6F90 32 77 6F             LD      (GAMFLG),A      ; Set game flag
+ 387  6F93 3E 05                LD      A,5             ; Initialize frog number
+ 388  6F95 32 82 6F             LD      (NUMFRG),A
+ 389  6F98 ED 5F                LD      A,R             ; Generate random ptr
+ 390  6F9A E6 3F                AND     $3F             ; For this cycle
+ 391  6F9C 67                   LD      H,A             ; Ptr points to ROM
+ 392  6F9D ED 5F                LD      A,R
+ 393  6F9F 6F                   LD      L,A
+ 394  6FA0 22 75 6F             LD      (RND),HL
+ 395  6FA3 21 AC 50             LD      HL,$50AC        ; Init frog station
+ 396  6FA6 22 84 6E             LD      (FRGSTN),HL
+ 397  6FA9 CD D7 72             CALL    CLRSCR          ; Clear screen routine
+ 398  6FAC CD 0B 70             CALL    DRWHWY          ; Draw highway
+ 399  6FAF CD 55 70             CALL    LINEUP          ; Line up all existing frogs
+ 400  6FB2 21 00 40             LD      HL,$4000        ; Message location
+ 401  6FB5 11 3D 6F             LD      DE,SCRMS1       ; Load score message
+ 402  6FB8 06 06                LD      B,6
+ 403  6FBA CD 28 73             CALL    DISASC          ; Display ASCII Character
+ 404  6FBD 21 44 6F             LD      HL,SCORE+1      ; Print score
+ 405  6FC0 CD 6F 77             CALL    SCRIMG          ; Convert to printable image
+ 406  6FC3 21 06 40             LD      HL,$4006
+ 407  6FC6 11 59 6F             LD      DE,IMAGE
+ 408  6FC9 06 05                LD      B,5
+ 409  6FCB CD 28 73             CALL    DISASC
+ 410  6FCE 21 0E 40             LD      HL,$400E        ; High score message
+ 411  6FD1 11 49 6F             LD      DE,SCRMS2
+ 412  6FD4 06 0B                LD      B,11
+ 413  6FD6 CD 28 73             CALL    DISASC
+ 414  6FD9 21 54 6F             LD      HL,HISCR
+ 415  6FDC CD 6F 77             CALL    SCRIMG
+ 416  6FDF 21 19 40             LD      HL,$4019
+ 417  6FE2 11 59 6F             LD      DE,IMAGE
+ 418  6FE5 06 05                LD      B,5
+ 419  6FE7 CD 28 73             CALL    DISASC
+ 420  6FEA 21 25 6E             LD      HL,OB1EXT       ; Set all objects nonexistant
+ 421  6FED 11 0C 00             LD      DE,12
+ 422  6FF0 06 07                LD      B,7
+ 423  6FF2 AF                   XOR     A
+ 424  6FF3 77           INTLP1  LD      (HL),A
+ 425  6FF4 19                   ADD     HL,DE
+ 426  6FF5 10 FC                DJNZ    INTLP1
+ 427  6FF7 32 72 6F             LD      (CHASE),A       ; Set no police car chase
+ 428  6FFA 3C                   INC     A
+ 429  6FFB 32 73 6F             LD      (SOUNDF),A      ; Set siren on
+ 430  6FFE 21 43 6F             LD      HL,SCORE        ; Initialize score to
+ 431  7001 11 44 6F             LD      DE,SCORE+1      ; ASCII zero ie 30H
+ 432  7004 0E 05                LD      C,5
+ 433  7006 36 30                LD      (HL),$30
+ 434  7008 ED B0                LDIR                    ; Init score to 30H
+ 435  700A C9                   RET
+ 436  700B
+ 437  700B              ;********** Draw highway **********
+ 438  700B
+ 439  700B 21 A0 40     DRWHWY  LD      HL,$40A0        ; Fill top hwy
+ 440  700E CD 41 70             CALL    FILHWY
+ 441  7011 21 60 48             LD      HL,$4860        ; Fill middle hwy
+ 442  7014 CD 41 70             CALL    FILHWY
+ 443  7017 21 20 50             LD      HL,$5020        ; Fill bottom hwy
+ 444  701A CD 41 70             CALL    FILHWY
+ 445  701D 21 A0 46             LD      HL,TOPHY1       ; Reverse built highway
+ 446  7020 11 A0 47             LD      DE,TOPHY2
+ 447  7023 AF                   XOR     A
+ 448  7024 CD 38 70             CALL    HIGHWY
+ 449  7027 21 20 50             LD      HL,BOTHY1
+ 450  702A 11 20 51             LD      DE,BOTHY2
+ 451  702D CD 38 70             CALL    HIGHWY
+ 452  7030 21 60 4B             LD      HL,MIDHY1
+ 453  7033 11 60 4C             LD      DE,MIDHY2
+ 454  7036 3E C3                LD      A,195           ; Binary 110000011
+ 455  7038 06 20        HIGHWY  LD      B,32            ; 32*8 bits
+ 456  703A 77           HWYLOP  LD      (HL),A
+ 457  703B 12                   LD      (DE),A
+ 458  703C 23                   INC     HL
+ 459  703D 13                   INC     DE
+ 460  703E 10 FA                DJNZ    HWYLOP
+ 461  7040 C9                   RET
+ 462  7041
+ 463  7041              ;********** Fill highway **********
+ 464  7041
+ 465  7041 3E FF        FILHWY  LD      A,$0FF
+ 466  7043 D9                   EXX
+ 467  7044 06 20                LD      B,32
+ 468  7046 D9           FILHYL  EXX
+ 469  7047 E5                   PUSH    HL
+ 470  7048 06 08                LD      B,8
+ 471  704A 77           FILCHR  LD      (HL),A
+ 472  704B 24                   INC     H
+ 473  704C 10 FC                DJNZ    FILCHR
+ 474  704E E1                   POP     HL
+ 475  704F 23                   INC     HL
+ 476  7050 D9                   EXX
+ 477  7051 10 F3                DJNZ    FILHYL
+ 478  7053 D9                   EXX
+ 479  7054 C9                   RET
+ 480  7055
+ 481  7055              ;********** Lineup **********
+ 482  7055              ;
+ 483  7055              ; Draw all frogs left on the screen
+ 484  7055              ;
+ 485  7055
+ 486  7055 3E 01        LINEUP  LD      A,1             ; Right frog
+ 487  7057 32 7B 6E             LD      (FRGDIR),A
+ 488  705A 11 D7 69             LD      DE,FROG2        ; Right frog shape
+ 489  705D 2A 84 6E             LD      HL,(FRGSTN)     ; Frog station
+ 490  7060 3E 04                LD      A,4             ; (Paper 0)*8+(Ink 4)
+ 491  7062 32 65 6F             LD      (ATTR),A
+ 492  7065 3A 82 6F             LD      A,(NUMFRG)      ; Number of frog
+ 493  7068 A7                   AND     A               ; Test for no frog left
+ 494  7069 C8                   RET     Z
+ 495  706A 47                   LD      B,A             ; Number of frog times
+ 496  706B C5           DRAWLN  PUSH    BC
+ 497  706C D5                   PUSH    DE
+ 498  706D E5                   PUSH    HL
+ 499  706E CD 7A 70             CALL    DRWFRG          ; Draw frog routine
+ 500  7071 E1                   POP     HL
+ 501  7072 D1                   POP     DE
+ 502  7073 2B                   DEC     HL
+ 503  7074 2B                   DEC     HL
+ 504  7075 2B                   DEC     HL
+ 505  7076 C1                   POP     BC
+ 506  7077 10 F2                DJNZ    DRAWLN
+ 507  7079 C9                   RET
+ 508  707A
+ 509  707A              ;********** Draw frog routine **********
+ 510  707A
+ 511  707A 3E 02        DRWFRG  LD      A,2             ; Two row frog shape
+ 512  707C 08                   EX      AF,AF'
+ 513  707D E5                   PUSH    HL              ; Store pos ptr
+ 514  707E E5           FRGLP0  PUSH    HL
+ 515  707F 0E 02                LD      C,2             ; Column count
+ 516  7081 E5           FRGLP1  PUSH    HL
+ 517  7082 06 08                LD      B,8             ; Draw character
+ 518  7084 1A           FRGLP2  LD      A,(DE)
+ 519  7085 77                   LD      (HL),A
+ 520  7086 13                   INC     DE
+ 521  7087 24                   INC     H               ; Next byte of char
+ 522  7088 10 FA                DJNZ    FRGLP2
+ 523  708A E1                   POP     HL              ; Current pointer
+ 524  708B 23                   INC     HL              ; Move to next char pos
+ 525  708C 0D                   DEC     C               ; Decrement column count
+ 526  708D 20 F2                JR      NZ,FRGLP1
+ 527  708F E1                   POP     HL              ; Row pointer
+ 528  7090 08                   EX      AF,AF'
+ 529  7091 3D                   DEC     A               ; Decrement lines of char
+ 530  7092 0E 20                LD      C,32
+ 531  7094 28 0E                JR      Z,FRGATT        ; Load frog attribute
+ 532  7096 08                   EX      AF,AF'
+ 533  7097 A7                   AND     A
+ 534  7098 ED 42                SBC     HL,BC           ; Move 32 char 1 line up
+ 535  709A CB 44                BIT     0,H             ; Test cross scr section
+ 536  709C 28 E0                JR      Z,FRGLP0
+ 537  709E 7C                   LD      A,H
+ 538  709F D6 07                SUB     7               ; Up one screen section
+ 539  70A1 67                   LD      H,A
+ 540  70A2 18 DA                JR      FRGLP0
+ 541  70A4 E1           FRGATT  POP     HL              ; Position pointer
+ 542  70A5 7C                   LD      A,H             ; Convert to attribute pointer
+ 543  70A6 E6 18                AND     $18
+ 544  70A8 CB 2F                SRA     A
+ 545  70AA CB 2F                SRA     A
+ 546  70AC CB 2F                SRA     A
+ 547  70AE C6 58                ADD     A,$58
+ 548  70B0 67                   LD      H,A
+ 549  70B1 3A 65 6F             LD      A,(ATTR)        ; Fill frog shape attribute
+ 550  70B4 77                   LD      (HL),A
+ 551  70B5 23                   INC     HL              ; Next character
+ 552  70B6 77                   LD      (HL),A
+ 553  70B7 ED 42                SBC     HL,BC           ; One line up
+ 554  70B9 77                   LD      (HL),A
+ 555  70BA 2B                   DEC     HL              ; Next char left
+ 556  70BB 77                   LD      (HL),A
+ 557  70BC C9                   RET
+ 558  70BD
+ 559  70BD              ;********** Traffic control routine **********
+ 560  70BD
+ 561  70BD 21 70 6F     TFCTRL  LD      HL,GENFLG       ; Check regeneration flag
+ 562  70C0 AF                   XOR     A
+ 563  70C1 BE                   CP      (HL)
+ 564  70C2 28 02                JR      Z,GENER         ; If zero, test generate
+ 565  70C4 35                   DEC     (HL)            ; Decrement generation flag
+ 566  70C5 C9                   RET
+ 567  70C6 21 25 6E     GENER   LD      HL,OB1EXT       ; Start of traffic db
+ 568  70C9 11 0C 00             LD      DE,12           ; 12 byte message
+ 569  70CC 06 06                LD      B,6             ; 6 db pairs
+ 570  70CE BE           TCTRLP  CP      (HL)            ; Test existence
+ 571  70CF 20 04                JR      NZ,NSPACE
+ 572  70D1 CD D9 70             CALL    REGEN           ; Reneration routine
+ 573  70D4 C9                   RET
+ 574  70D5 19           NSPACE  ADD     HL,DE
+ 575  70D6 10 F6                DJNZ    TCTRLP
+ 576  70D8 C9                   RET
+ 577  70D9
+ 578  70D9              ;********** Regeneration of traffic **********
+ 579  70D9              ; Input: HL => DB pairs
+ 580  70D9
+ 581  70D9 E5           REGEN   PUSH    HL
+ 582  70DA CD CC 77     RAND1   CALL    RANDNO          ; Random number routine
+ 583  70DD E6 07                AND     7               ; Generate random number
+ 584  70DF FE 06                CP      6               ; From 0 to 5
+ 585  70E1 30 F7                JR      NC,RAND1
+ 586  70E3 01 21 59             LD      BC,$5921        ; Two char test
+ 587  70E6 21 20 59             LD      HL,$5920        ; Test jam
+ 588  70E9 CB 47                BIT     0,A             ; Odd number is left
+ 589  70EB 28 04                JR      Z,RTRAF         ; Right traffic
+ 590  70ED 2E DF                LD      L,$0DF
+ 591  70EF 0E DE                LD      C,$0DE
+ 592  70F1 87           RTRAF   ADD     A,A             ; Get DBINDEX ptr in de
+ 593  70F2 5F                   LD      E,A
+ 594  70F3 0A                   LD      A,(BC)          ; Test 2 char ahead
+ 595  70F4 86                   ADD     A,(HL)
+ 596  70F5 A7                   AND     A               ; Zero paper, zero ink
+ 597  70F6 28 02                JR      Z,LOADDB        ; If 0, initialize new obj
+ 598  70F8 E1                   POP     HL              ; If jam, return
+ 599  70F9 C9                   RET
+ 600  70FA 57           LOADDB  LD      D,A             ; A=0
+ 601  70FB 21 89 6E             LD      HL,DBINDEX      ; Get db
+ 602  70FE 19                   ADD     HL,DE
+ 603  70FF 5E                   LD      E,(HL)          ; Get corr database
+ 604  7100 23                   INC     HL
+ 605  7101 56                   LD      D,(HL)
+ 606  7102 EB                   EX      DE,HL           ; Source
+ 607  7103 D1                   POP     DE              ; Destination
+ 608  7104 01 0C 00             LD      BC,12
+ 609  7107 ED B0                LDIR
+ 610  7109 3E 02                LD      A,2             ; Set regeneration flag
+ 611  710B 32 70 6F             LD      (GENFLG),A      ; Skip for 2 cycles
+ 612  710E C9                   RET
+ 613  710F
+ 614  710F              ;********** Move traffic routine **********
+ 615  710F
+ 616  710F D9           MOVTRF  EXX
+ 617  7110 21 25 6E             LD      HL,OB1EXT
+ 618  7113 11 0C 00             LD      DE,12
+ 619  7116 06 06                LD      B,6
+ 620  7118 E5           MTRFLP  PUSH    HL
+ 621  7119 D9                   EXX
+ 622  711A E1                   POP     HL              ; Existence
+ 623  711B 7E                   LD      A,(HL)          ; Skip when no exist
+ 624  711C A7                   AND     A
+ 625  711D CA A7 71             JP      Z,NXTMOV
+ 626  7120 23                   INC     HL              ; Cycle count
+ 627  7121 35                   DEC     (HL)            ; Decrement cycle count
+ 628  7122 C2 A7 71             JP      NZ,NXTMOV
+ 629  7125 23                   INC     HL              ; Direction
+ 630  7126 7E                   LD      A,(HL)          ; 0 L to R, 1 R to L
+ 631  7127 23                   INC     HL
+ 632  7128 23                   INC     HL
+ 633  7129 22 6E 6F             LD      (POSPTR),HL     ; Position pointer
+ 634  712C 5E                   LD      E,(HL)          ; Restore position
+ 635  712D 23                   INC     HL
+ 636  712E 56                   LD      D,(HL)
+ 637  712F 1C                   INC     E               ; Move right
+ 638  7130 A7                   AND     A
+ 639  7131 28 02                JR      Z,LDPOS
+ 640  7133 1D                   DEC     E               ; Move left
+ 641  7134 1D                   DEC     E               ; Move left
+ 642  7135 ED 53 6C 6F  LDPOS   LD      (NEWPOS),DE
+ 643  7139 08                   EX      AF,AF'
+ 644  713A 01 05 00             LD      BC,5            ; Restore object length
+ 645  713D 09                   ADD     HL,BC
+ 646  713E 7E                   LD      A,(HL)          ; Row
+ 647  713F 32 60 6F             LD      (ROW),A
+ 648  7142 23                   INC     HL
+ 649  7143 7E                   LD      A,(HL)          ; Column
+ 650  7144 32 5F 6F             LD      (COLUMN),A
+ 651  7147 3D                   DEC     A
+ 652  7148 4F                   LD      C,A
+ 653  7149 08                   EX      AF,AF'
+ 654  714A A7                   AND     A               ; Test direction
+ 655  714B EB                   EX      DE,HL
+ 656  714C 20 08                JR      NZ,RTOL         ; Right to left
+ 657  714E 09                   ADD     HL,BC           ; Find head of truck
+ 658  714F 7D                   LD      A,L             ; Lob
+ 659  7150 FE 40                CP      $40             ; Test right edge
+ 660  7152 30 46                JR      NC,MOVEOK       ; Skip test ahead if off
+ 661  7154 18 05                JR      TESTAH          ; Test ahead
+ 662  7156 7D           RTOL    LD      A,L             ; New pos, ahead as well
+ 663  7157 FE C0                CP      $0C0            ; Test left edge
+ 664  7159 38 3F                JR      C,MOVEOK        ; Skip test ahead
+ 665  715B 7C           TESTAH  LD      A,H             ; Convert to attribute
+ 666  715C E6 18                AND     $18
+ 667  715E CB 2F                SRA     A
+ 668  7160 CB 2F                SRA     A
+ 669  7162 CB 2F                SRA     A
+ 670  7164 C6 58                ADD     A,$58
+ 671  7166 67                   LD      H,A
+ 672  7167 01 20 00             LD      BC,32
+ 673  716A AF                   XOR     A
+ 674  716B 32 71 6F             LD      (JAMFLG),A      ; Initialize jam flag
+ 675  716E 3A 60 6F             LD      A,(ROW)
+ 676  7171 08           TAHLOP  EX      AF,AF'
+ 677  7172 7E                   LD      A,(HL)          ; Retrieve attribute
+ 678  7173 E6 07                AND     7
+ 679  7175 28 0E                JR      Z,TFROG1        ; Jump if black ink
+ 680  7177 FE 04                CP      4               ; Test for green frog
+ 681  7179 20 07                JR      NZ,JAM1         ; Jam if not a frog
+ 682  717B 3E 01                LD      A,1             ; Move if it is frog
+ 683  717D 32 7C 6F             LD      (CRHFLG),A      ; Set frog crash
+ 684  7180 18 03                JR      TFROG1
+ 685  7182 32 71 6F     JAM1    LD      (JAMFLG),A      ; Set jam flag nonzero
+ 686  7185 A7           TFROG1  AND     A
+ 687  7186 ED 42                SBC     HL,BC
+ 688  7188 08                   EX      AF,AF'
+ 689  7189 3D                   DEC     A               ; Update row
+ 690  718A 20 E5                JR      NZ,TAHLOP
+ 691  718C 3A 71 6F             LD      A,(JAMFLG)      ; Test traffic jam
+ 692  718F A7                   AND     A
+ 693  7190 28 08                JR      Z,MOVEOK        ; Move if no jam
+ 694  7192 D9                   EXX                     ; Else stop move one cycle
+ 695  7193 23                   INC     HL
+ 696  7194 34                   INC     (HL)            ; Load 2 cycle count
+ 697  7195 34                   INC     (HL)
+ 698  7196 2B                   DEC     HL
+ 699  7197 D9                   EXX
+ 700  7198 18 0D                JR      NXTMOV
+ 701  719A 2A 6E 6F     MOVEOK  LD      HL,(POSPTR)     ; Retrieve pointer to position
+ 702  719D ED 5B 6C 6F          LD      DE,(NEWPOS)
+ 703  71A1 73                   LD      (HL),E          ; Store newpos in db
+ 704  71A2 23                   INC     HL
+ 705  71A3 72                   LD      (HL),D
+ 706  71A4 CD AF 71             CALL    MVCTRL          ; Movement control
+ 707  71A7 D9           NXTMOV  EXX
+ 708  71A8 19                   ADD     HL,DE
+ 709  71A9 05                   DEC     B
+ 710  71AA C2 18 71             JP      NZ,MTRFLP
+ 711  71AD D9                   EXX
+ 712  71AE C9                   RET
+ 713  71AF
+ 714  71AF              ;*********** Traffic movement control routine **********
+ 715  71AF 2B           MVCTRL  DEC     HL
+ 716  71B0 2B                   DEC     HL              ; DE=>newpos, HL=>DB ptr
+ 717  71B1 7B                   LD      A,E             ; Lob pos
+ 718  71B2 E6 1F                AND     $1F             ; Test edge
+ 719  71B4 20 05                JR      NZ,CHGRAF       ; Change real abs flag
+ 720  71B6 7E                   LD      A,(HL)
+ 721  71B7 3C                   INC     A
+ 722  71B8 E6 01                AND     1
+ 723  71BA 77                   LD      (HL),A
+ 724  71BB 2B           CHGRAF  DEC     HL              ; PT dir
+ 725  71BC 7E                   LD      A,(HL)
+ 726  71BD A7                   AND     A
+ 727  71BE 20 0F                JR      NZ,TOLEFT       ; Right to left
+ 728  71C0 7B                   LD      A,E
+ 729  71C1 E6 1F                AND     $1F             ; If to right and abs
+ 730  71C3 20 1B                JR      NZ,DRWOBJ
+ 731  71C5 23                   INC     HL              ; Get raf
+ 732  71C6 7E                   LD      A,(HL)
+ 733  71C7 2B                   DEC     HL              ; PT to dir
+ 734  71C8 A7                   AND     A               ; If abstract, dies
+ 735  71C9 20 15                JR      NZ,DRWOBJ
+ 736  71CB D9                   EXX
+ 737  71CC 77                   LD      (HL),A          ; Set nonexistance
+ 738  71CD D9                   EXX
+ 739  71CE C9                   RET
+ 740  71CF 3A 5F 6F     TOLEFT  LD      A,(COLUMN)
+ 741  71D2 4F                   LD      C,A
+ 742  71D3 EB                   EX      DE,HL           ; Test end of object
+ 743  71D4 09                   ADD     HL,BC           ; Touches left edge
+ 744  71D5 7D                   LD      A,L
+ 745  71D6 FE C0                CP      $0C0
+ 746  71D8 EB                   EX      DE,HL
+ 747  71D9 20 05                JR      NZ,DRWOBJ
+ 748  71DB D9                   EXX                     ; Object nonexistant as
+ 749  71DC 36 00                LD      (HL),0          ; it moves off screen
+ 750  71DE D9                   EXX
+ 751  71DF C9                   RET
+ 752  71E0 D9           DRWOBJ  EXX
+ 753  71E1 7E                   LD      A,(HL)
+ 754  71E2 23                   INC     HL
+ 755  71E3 77                   LD      (HL),A          ; Refill cycle count
+ 756  71E4 2B                   DEC     HL
+ 757  71E5 D9                   EXX
+ 758  71E6 23                   INC     HL
+ 759  71E7 E5                   PUSH    HL              ; PT to raf
+ 760  71E8 23                   INC     HL
+ 761  71E9 23                   INC     HL
+ 762  71EA 23                   INC     HL
+ 763  71EB 5E                   LD      E,(HL)          ; Retrieve shape pointer
+ 764  71EC 23                   INC     HL
+ 765  71ED 56                   LD      D,(HL)
+ 766  71EE 23                   INC     HL
+ 767  71EF 4E                   LD      C,(HL)          ; Retrieve attr pointer
+ 768  71F0 23                   INC     HL
+ 769  71F1 46                   LD      B,(HL)
+ 770  71F2 ED 43 6A 6F          LD      (ATTPTR),BC
+ 771  71F6 23                   INC     HL
+ 772  71F7 7E                   LD      A,(HL)
+ 773  71F8 32 60 6F             LD      (ROW),A
+ 774  71FB 23                   INC     HL
+ 775  71FC 7E                   LD      A,(HL)
+ 776  71FD 32 5F 6F             LD      (COLUMN),A
+ 777  7200 E1                   POP     HL
+ 778  7201 7E                   LD      A,(HL)          ; Raflag
+ 779  7202 2A 6C 6F             LD      HL,(NEWPOS)
+ 780  7205 CD 09 72             CALL    DRAW
+ 781  7208 C9                   RET
+ 782  7209
+ 783  7209              ;********** Draw routine **********
+ 784  7209              ; Input: HL - Start of display pos
+ 785  7209              ;        DE - Pointer to shape db;
+ 786  7209              ;        A  - Position real/abstract flag
+ 787  7209              ;        C  - No. of color to be displayed
+ 788  7209              ;        COL pass as var
+ 789  7209              ;
+ 790  7209              ; Var:   COLUMN, ROW, ATTR, DRWPOS, SKIP, FILL
+ 791  7209              ;
+ 792  7209              ; Reg:   A,BC,DE,HL,A'
+ 793  7209              ;
+ 794  7209
+ 795  7209 CD 96 72     DRAW    CALL    RSHAPE          ; Return row/col attptr
+ 796  720C 3A 60 6F             LD      A,(ROW)
+ 797  720F 08                   EX      AF,AF'
+ 798  7210 D5           LP0     PUSH    DE
+ 799  7211 E5                   PUSH    HL              ; Store line pointer
+ 800  7212 3A 61 6F             LD      A,(SKIP)
+ 801  7215 4F                   LD      C,A
+ 802  7216 06 00                LD      B,0
+ 803  7218 09                   ADD     HL,BC           ; Skip position pointer
+ 804  7219 87                   ADD     A,A             ; Multiple of 8 bytes
+ 805  721A 87                   ADD     A,A
+ 806  721B 87                   ADD     A,A
+ 807  721C 4F                   LD      C,A             ; Skip shape pointer
+ 808  721D EB                   EX      DE,HL
+ 809  721E 09                   ADD     HL,BC
+ 810  721F EB                   EX      DE,HL
+ 811  7220 CB 44                BIT     0,H             ; Cross screen section?
+ 812  7222 28 04                JR      Z,NOSKIP
+ 813  7224 3E 07                LD      A,7             ; If yes, move up
+ 814  7226 84                   ADD     A,H
+ 815  7227 67                   LD      H,A
+ 816  7228 3A 62 6F     NOSKIP  LD      A,(FILL)
+ 817  722B A7                   AND     A
+ 818  722C 28 11                JR      Z,NXT
+ 819  722E 4F                   LD      C,A             ; Column to be filled
+ 820  722F E5           LP1     PUSH    HL              ; Fill character
+ 821  7230 06 08                LD      B,8
+ 822  7232 1A           LP2     LD      A,(DE)          ; Fill character bytes
+ 823  7233 77                   LD      (HL),A
+ 824  7234 13                   INC     DE
+ 825  7235 24                   INC     H
+ 826  7236 10 FA                DJNZ    LP2
+ 827  7238 E1                   POP     HL
+ 828  7239 0D                   DEC     C
+ 829  723A 28 03                JR      Z,NXT
+ 830  723C 23                   INC     HL              ; Next character
+ 831  723D 18 F0                JR      LP1
+ 832  723F 08           NXT     EX      AF,AF'
+ 833  7240 E1                   POP     HL              ; Restore line pointer
+ 834  7241 D1                   POP     DE              ; Shape DB pointer
+ 835  7242 3D                   DEC     A               ; Update row count
+ 836  7243 28 1A                JR      Z,LDATTR
+ 837  7245 08                   EX      AF,AF'
+ 838  7246 A7                   AND     A               ; Clear carry
+ 839  7247 0E 20                LD      C,$20
+ 840  7249 ED 42                SBC     HL,BC           ; One line up
+ 841  724B CB 44                BIT     0,H             ; Cross screen section?
+ 842  724D 28 04                JR      Z,MODDB
+ 843  724F 7C                   LD      A,H
+ 844  7250 D6 07                SUB     7
+ 845  7252 67                   LD      H,A
+ 846  7253 3A 5F 6F     MODDB   LD      A,(COLUMN)
+ 847  7256 87                   ADD     A,A
+ 848  7257 87                   ADD     A,A
+ 849  7258 87                   ADD     A,A             ; Update shape db
+ 850  7259 4F                   LD      C,A
+ 851  725A EB                   EX      DE,HL
+ 852  725B 09                   ADD     HL,BC
+ 853  725C EB                   EX      DE,HL
+ 854  725D 18 B1                JR      LP0
+ 855  725F 2A 63 6F     LDATTR  LD      HL,(ATTPOS)
+ 856  7262 ED 5B 6A 6F          LD      DE,(ATTPTR)
+ 857  7266 3A 60 6F             LD      A,(ROW)
+ 858  7269 08           ATROW   EX      AF,AF'
+ 859  726A D5                   PUSH    DE
+ 860  726B E5                   PUSH    HL
+ 861  726C 3A 61 6F             LD      A,(SKIP)
+ 862  726F 4F                   LD      C,A
+ 863  7270 06 00                LD      B,0
+ 864  7272 09                   ADD     HL,BC           ; Skip attribute file
+ 865  7273 EB                   EX      DE,HL
+ 866  7274 09                   ADD     HL,BC           ; Skip attribute database
+ 867  7275 EB                   EX      DE,HL
+ 868  7276 3A 62 6F             LD      A,(FILL)
+ 869  7279 A7                   AND     A
+ 870  727A 28 07                JR      Z,SKIPAT        ; Skip attribute
+ 871  727C 47                   LD      B,A             ; Fill attributes
+ 872  727D 1A           ATTR2   LD      A,(DE)
+ 873  727E 77                   LD      (HL),A
+ 874  727F 23                   INC     HL
+ 875  7280 13                   INC     DE
+ 876  7281 10 FA                DJNZ    ATTR2
+ 877  7283 E1           SKIPAT  POP     HL
+ 878  7284 D1                   POP     DE
+ 879  7285 3A 5F 6F             LD      A,(COLUMN)
+ 880  7288 A7                   AND     A               ; Clear carry
+ 881  7289 0E 20                LD      C,$20
+ 882  728B ED 42                SBC     HL,BC           ; Next attribute line up
+ 883  728D 4F                   LD      C,A
+ 884  728E EB                   EX      DE,HL
+ 885  728F 09                   ADD     HL,BC           ; Update attribute db
+ 886  7290 EB                   EX      DE,HL
+ 887  7291 08                   EX      AF,AF'
+ 888  7292 3D                   DEC     A
+ 889  7293 20 D4                JR      NZ,ATROW
+ 890  7295 C9                   RET
+ 891  7296
+ 892  7296              ;********** RSHAPE **********
+ 893  7296              ;
+ 894  7296              ;  Input:  HL=>Position
+ 895  7296              ;          A =>Real/abstract flag
+ 896  7296              ;          DE=>Shape pointer
+ 897  7296              ;          COLUMN
+ 898  7296              ;
+ 899  7296              ;  Output: SKIP, FILL, ATTPOS
+ 900  7296
+ 901  7296 E5           RSHAPE  PUSH    HL
+ 902  7297 08                   EX      AF,AF'          ; Real shape
+ 903  7298 26 1F                LD      H,$1F
+ 904  729A 7C                   LD      A,H
+ 905  729B A5                   AND     L               ; Trap lower 5 bits
+ 906  729C 6F                   LD      L,A
+ 907  729D 7C                   LD      A,H
+ 908  729E 95                   SUB     L               ; Subtract from 1FH
+ 909  729F 3C                   INC     A
+ 910  72A0 A4                   AND     H               ; Adjust for zero diff
+ 911  72A1 6F                   LD      L,A
+ 912  72A2 08                   EX      AF,AF'
+ 913  72A3 A7                   AND     A               ; 0=>abstract, 1=>real
+ 914  72A4 3A 5F 6F             LD      A,(COLUMN)
+ 915  72A7 20 0A                JR      NZ,REAL
+ 916  72A9 95                   SUB     L
+ 917  72AA 32 62 6F             LD      (FILL),A
+ 918  72AD 7D                   LD      A,L             ; Reload abs diff
+ 919  72AE 32 61 6F             LD      (SKIP),A
+ 920  72B1 18 11                JR      CALATT
+ 921  72B3 BD           REAL    CP      L               ; Take min of col/fill
+ 922  72B4 38 07                JR      C,TOOBIG        ; Fill more than col
+ 923  72B6 7D                   LD      A,L
+ 924  72B7 A7                   AND     A
+ 925  72B8 20 03                JR      NZ,TOOBIG
+ 926  72BA 3A 5F 6F             LD      A,(COLUMN)
+ 927  72BD 32 62 6F     TOOBIG  LD      (FILL),A
+ 928  72C0 AF                   XOR     A
+ 929  72C1 32 61 6F             LD      (SKIP),A
+ 930  72C4 E1           CALATT  POP     HL              ; Calculate att pointer
+ 931  72C5 E5                   PUSH    HL
+ 932  72C6 7C                   LD      A,H
+ 933  72C7 E6 18                AND     $18
+ 934  72C9 CB 2F                SRA     A
+ 935  72CB CB 2F                SRA     A
+ 936  72CD CB 2F                SRA     A
+ 937  72CF C6 58                ADD     A,$58
+ 938  72D1 67                   LD      H,A
+ 939  72D2 22 63 6F             LD      (ATTPOS),HL
+ 940  72D5 E1                   POP     HL
+ 941  72D6 C9                   RET
+ 942  72D7
+ 943  72D7              ;********** Clear Screen Routine **********
+ 944  72D7
+ 945  72D7 21 00 40     CLRSCR  LD      HL,$4000        ; HL - Start of screen
+ 946  72DA 11 01 40             LD      DE,$4001
+ 947  72DD 01 FF 17             LD      BC,6143         ; Size of screen 17FFH
+ 948  72E0 AF                   XOR     A               ; Blank screen
+ 949  72E1 77                   LD      (HL),A
+ 950  72E2 ED B0                LDIR
+ 951  72E4 21 00 58             LD      HL,$5800        ; Set first line for score
+ 952  72E7 11 01 58             LD      DE,$5801        ; Of attribute file
+ 953  72EA 01 1F 00             LD      BC,31
+ 954  72ED 36 07                LD      (HL),7          ; Ink seven
+ 955  72EF ED B0                LDIR
+ 956  72F1 21 20 58             LD      HL,$5820        ; Set attribute
+ 957  72F4 11 21 58             LD      DE,$5821        ; Start from second line
+ 958  72F7 01 DF 02             LD      BC,735
+ 959  72FA 77                   LD      (HL),A          ; (Paper 0)*8 + (Ink 0)
+ 960  72FB ED B0                LDIR
+ 961  72FD 21 A0 58             LD      HL,$58A0        ; Set highway
+ 962  7300 11 60 59             LD      DE,$5960        ; High, middle, bottom
+ 963  7303 01 20 5A             LD      BC,$5A20
+ 964  7306 3E 38                LD      A,56            ; (Paper 7)*8 + (Ink 0)
+ 965  7308 D9                   EXX
+ 966  7309 06 20                LD      B,32            ; Fill one line
+ 967  730B D9           HWYATT  EXX
+ 968  730C 77                   LD      (HL),A
+ 969  730D 12                   LD      (DE),A
+ 970  730E 02                   LD      (BC),A
+ 971  730F 23                   INC     HL
+ 972  7310 13                   INC     DE
+ 973  7311 03                   INC     BC
+ 974  7312 D9                   EXX
+ 975  7313 10 F6                DJNZ    HWYATT
+ 976  7315 D9                   EXX
+ 977  7316 C9                   RET
+ 978  7317
+ 979  7317 E5           SHAPE   PUSH    HL              ; Save HL pointer
+ 980  7318 3A 7B 6E             LD      A,(FRGDIR)
+ 981  731B 87                   ADD     A,A
+ 982  731C 21 AF 69             LD      HL,FRGSHP
+ 983  731F 16 00                LD      D,0
+ 984  7321 5F                   LD      E,A
+ 985  7322 19                   ADD     HL,DE           ; Pointer to pos of shape
+ 986  7323 5E                   LD      E,(HL)          ; DE return shape pointer
+ 987  7324 23                   INC     HL
+ 988  7325 56                   LD      D,(HL)
+ 989  7326 E1                   POP     HL
+ 990  7327 C9                   RET
+ 991  7328
+ 992  7328              ;*********** Display ASCII **********
+ 993  7328              ; Display ASCII from character set
+ 994  7328              ; NB:---- Store DE, the message pointer
+ 995  7328              ;         HL stays the same after display
+ 996  7328              ;         used BC register as well
+ 997  7328
+ 998  7328 C5           DISASC  PUSH    BC
+ 999  7329 D5                   PUSH    DE
+1000  732A E5                   PUSH    HL
+1001  732B 1A                   LD      A,(DE)          ; Load ASCII character
+1002  732C 6F                   LD      L,A
+1003  732D 26 00                LD      H,0
+1004  732F 29                   ADD     HL,HL           ; Multiple of 8 bytes
+1005  7330 29                   ADD     HL,HL
+1006  7331 29                   ADD     HL,HL
+1007  7332 EB                   EX      DE,HL
+1008  7333 21 00 3C             LD      HL,CHRSET       ; Start of character set
+1009  7336 19                   ADD     HL,DE
+1010  7337 EB                   EX      DE,HL
+1011  7338 E1                   POP     HL
+1012  7339 06 08        DRWCHR  LD      B,8             ; Draw character
+1013  733B E5                   PUSH    HL
+1014  733C 1A           CHARLP  LD      A,(DE)
+1015  733D 77                   LD      (HL),A
+1016  733E 13                   INC     DE
+1017  733F 24                   INC     H
+1018  7340 10 FA                DJNZ    CHARLP
+1019  7342 E1                   POP     HL
+1020  7343 D1                   POP     DE
+1021  7344 23                   INC     HL              ; Position pointer
+1022  7345 13                   INC     DE              ; Message pointer
+1023  7346 C1                   POP     BC
+1024  7347 10 DF                DJNZ    DISASC
+1025  7349 C9                   RET
+1026  734A
+1027  734A              ;********** Police car routine *********
+1028  734A
+1029  734A D9           POLICE  EXX
+1030  734B 21 6D 6E             LD      HL,PCAREXT
+1031  734E 7E                   LD      A,(HL)          ; Test police car exists
+1032  734F E5                   PUSH    HL
+1033  7350 D9                   EXX
+1034  7351 A7                   AND     A
+1035  7352 20 23                JR      NZ,MOVPC        ; Move police car
+1036  7354 D1                   POP     DE              ; DB ext pointer
+1037  7355 CD CC 77             CALL    RANDNO          ; Move when multiple of
+1038  7358 E6 1F                AND     $1F             ; 31
+1039  735A FE 1F                CP      $1F
+1040  735C C0                   RET     NZ
+1041  735D 3E 01                LD      A,1             ; Set chase flag
+1042  735F 32 72 6F             LD      (CHASE),A
+1043  7362 21 F5 6E             LD      HL,RPCDB        ; Right PC
+1044  7365 CD CC 77             CALL    RANDNO
+1045  7368 E6 01                AND     1
+1046  736A 28 03                JR      Z,RHTPC
+1047  736C 21 DD 6E             LD      HL,LPCDB
+1048  736F 01 0C 00     RHTPC   LD      BC,12
+1049  7372 ED B0                LDIR
+1050  7374 D9                   EXX
+1051  7375 E5                   PUSH    HL
+1052  7376 D9                   EXX
+1053  7377 E1           MOVPC   POP     HL              ; Existence pointer
+1054  7378 23                   INC     HL
+1055  7379 23                   INC     HL              ; Direction
+1056  737A 7E                   LD      A,(HL)
+1057  737B 47                   LD      B,A             ; Store direction
+1058  737C 23                   INC     HL
+1059  737D 23                   INC     HL              ; Position pointer
+1060  737E 22 6E 6F             LD      (POSPTR),HL
+1061  7381 5E                   LD      E,(HL)
+1062  7382 23                   INC     HL
+1063  7383 56                   LD      D,(HL)
+1064  7384 1C                   INC     E               ; Assume move right
+1065  7385 A7                   AND     A
+1066  7386 28 02                JR      Z,PCMRHT        ; Police car move right
+1067  7388 1D                   DEC     E
+1068  7389 1D                   DEC     E
+1069  738A ED 53 6C 6F  PCMRHT  LD      (NEWPOS),DE
+1070  738E 3E 02                LD      A,2             ; Two rows
+1071  7390 32 60 6F             LD      (ROW),A
+1072  7393 3E 06                LD      A,6
+1073  7395 32 5F 6F             LD      (COLUMN),A
+1074  7398 C5                   PUSH    BC              ; Direction
+1075  7399 3A 70 6E             LD      A,(PCARRAP)     ; Real/abs flag
+1076  739C EB                   EX      DE,HL
+1077  739D CD 96 72             CALL    RSHAPE          ; Ret skip/fill,attr
+1078  73A0 2A 63 6F             LD      HL,(ATTPOS)
+1079  73A3 F1                   POP     AF
+1080  73A4 A7                   AND     A               ; If 1, OK
+1081  73A5 20 04                JR      NZ,PCTAH        ; Police car test ahead
+1082  73A7 01 05 00             LD      BC,5
+1083  73AA 09                   ADD     HL,BC
+1084  73AB 7E           PCTAH   LD      A,(HL)
+1085  73AC E6 07                AND     7
+1086  73AE 01 20 00             LD      BC,32
+1087  73B1 A7                   AND     A
+1088  73B2 ED 42                SBC     HL,BC
+1089  73B4 FE 04                CP      4
+1090  73B6 28 07                JR      Z,ISFRG2
+1091  73B8 7E                   LD      A,(HL)
+1092  73B9 E6 07                AND     7
+1093  73BB FE 04                CP      4
+1094  73BD 20 09                JR      NZ,NFROG2
+1095  73BF 3E 01        ISFRG2  LD      A,1
+1096  73C1 32 7C 6F             LD      (CRHFLG),A      ; Set crash flag
+1097  73C4 3D                   DEC     A               ; Blank color
+1098  73C5 77                   LD      (HL),A          ; Blank front of PC
+1099  73C6 09                   ADD     HL,BC
+1100  73C7 77                   LD      (HL),A          ; ** Should blank front **
+1101  73C8 CD DF 73     NFROG2  CALL    STRPC           ; Store new underneath
+1102  73CB 2A 6E 6F             LD      HL,(POSPTR)
+1103  73CE ED 5B 6C 6F          LD      DE,(NEWPOS)
+1104  73D2 73                   LD      (HL),E
+1105  73D3 23                   INC     HL
+1106  73D4 72                   LD      (HL),D
+1107  73D5 CD AF 71             CALL    MVCTRL
+1108  73D8 D9                   EXX                     ; If non-existant
+1109  73D9 7E                   LD      A,(HL)
+1110  73DA 32 72 6F             LD      (CHASE),A
+1111  73DD D9                   EXX
+1112  73DE C9                   RET
+1113  73DF
+1114  73DF              ;********** STRPC **********
+1115  73DF              ; Store underneath police car
+1116  73DF
+1117  73DF 2A 6C 6F     STRPC   LD      HL,(NEWPOS)     ; Position pointer
+1118  73E2 11 AD 6D             LD      DE,PCSTR        ; Storage location
+1119  73E5 EB                   EX      DE,HL
+1120  73E6 73                   LD      (HL),E          ; Store position
+1121  73E7 23                   INC     HL
+1122  73E8 72                   LD      (HL),D
+1123  73E9 23                   INC     HL
+1124  73EA EB                   EX      DE,HL
+1125  73EB 21 60 6F             LD      HL,ROW          ; Load 5 bytes of info
+1126  73EE 7E                   LD      A,(HL)
+1127  73EF 01 05 00             LD      BC,5
+1128  73F2 ED B0                LDIR
+1129  73F4 08                   EX      AF,AF'
+1130  73F5 2A 6C 6F             LD      HL,(NEWPOS)
+1131  73F8 E5           SPCLP1  PUSH    HL
+1132  73F9 3A 61 6F             LD      A,(SKIP)
+1133  73FC 4F                   LD      C,A
+1134  73FD 09                   ADD     HL,BC
+1135  73FE CB 44                BIT     0,H
+1136  7400 28 04                JR      Z,NSSPS
+1137  7402 7C                   LD      A,H
+1138  7403 C6 07                ADD     A,7
+1139  7405 67                   LD      H,A
+1140  7406 3A 62 6F     NSSPS   LD      A,(FILL)
+1141  7409 A7                   AND     A
+1142  740A 28 0F                JR      Z,NXTSPC
+1143  740C 4F                   LD      C,A
+1144  740D E5           SPCLP2  PUSH    HL              ; Restore character
+1145  740E 06 08                LD      B,8
+1146  7410 7E           SPCLP3  LD      A,(HL)          ; Store screen first
+1147  7411 12                   LD      (DE),A
+1148  7412 13                   INC     DE
+1149  7413 24                   INC     H
+1150  7414 10 FA                DJNZ    SPCLP3
+1151  7416 E1                   POP     HL
+1152  7417 23                   INC     HL              ; Next character
+1153  7418 0D                   DEC     C
+1154  7419 20 F2                JR      NZ,SPCLP2
+1155  741B E1           NXTSPC  POP     HL
+1156  741C 08                   EX      AF,AF'          ; Update row count
+1157  741D 3D                   DEC     A
+1158  741E 28 0F                JR      Z,SPCATR        ; Restore police attr
+1159  7420 08                   EX      AF,AF'
+1160  7421 0E 20                LD      C,32
+1161  7423 ED 42                SBC     HL,BC           ; Up one line
+1162  7425 CB 44                BIT     0,H             ; Cross screen section?
+1163  7427 28 CF                JR      Z,SPCLP1
+1164  7429 7C                   LD      A,H
+1165  742A D6 07                SUB     7
+1166  742C 67                   LD      H,A
+1167  742D 18 C9                JR      SPCLP1
+1168  742F 2A 63 6F     SPCATR  LD      HL,(ATTPOS)     ; Attribute start position
+1169  7432 3A 60 6F             LD      A,(ROW)
+1170  7435 08                   EX      AF,AF'
+1171  7436 E5           SPCAT1  PUSH    HL
+1172  7437 3A 61 6F             LD      A,(SKIP)
+1173  743A 4F                   LD      C,A
+1174  743B 09                   ADD     HL,BC
+1175  743C 3A 62 6F             LD      A,(FILL)
+1176  743F A7                   AND     A
+1177  7440 28 03                JR      Z,NXTSPA
+1178  7442 4F                   LD      C,A
+1179  7443 ED B0                LDIR
+1180  7445 E1           NXTSPA  POP     HL
+1181  7446 08                   EX      AF,AF'
+1182  7447 3D                   DEC     A
+1183  7448 C8                   RET     Z
+1184  7449 08                   EX      AF,AF'
+1185  744A 0E 20                LD      C,32
+1186  744C ED 42                SBC     HL,BC
+1187  744E 18 E6                JR      SPCAT1
+1188  7450
+1189  7450 3A 6D 6E     RESPC   LD      A,(PCAREXT)     ; Test PC exist
+1190  7453 A7                   AND     A
+1191  7454 C8                   RET     Z
+1192  7455 11 60 6F             LD      DE,ROW
+1193  7458 21 AF 6D             LD      HL,PCSTR+2
+1194  745B 01 05 00             LD      BC,5
+1195  745E ED B0                LDIR                    ; Retrieve 5 info
+1196  7460 EB                   EX      DE,HL           ; DE storage pointer
+1197  7461 2A AD 6D             LD      HL,(PCSTR)      ; Load position
+1198  7464 3A 60 6F             LD      A,(ROW)
+1199  7467 08                   EX      AF,AF'
+1200  7468 E5           RPCLP1  PUSH    HL              ; Save position
+1201  7469 3A 61 6F             LD      A,(SKIP)
+1202  746C 4F                   LD      C,A
+1203  746D 09                   ADD     HL,BC
+1204  746E CB 44                BIT     0,H
+1205  7470 28 04                JR      Z,NSRPS
+1206  7472 3E 07                LD      A,7
+1207  7474 84                   ADD     A,H
+1208  7475 67                   LD      H,A
+1209  7476 3A 62 6F     NSRPS   LD      A,(FILL)
+1210  7479 A7                   AND     A
+1211  747A 28 0F                JR      Z,NXTRPC
+1212  747C 4F                   LD      C,A
+1213  747D E5           RPCLP2  PUSH    HL
+1214  747E 06 08                LD      B,8
+1215  7480 1A           RPCLP3  LD      A,(DE)          ; Restore character
+1216  7481 77                   LD      (HL),A
+1217  7482 13                   INC     DE
+1218  7483 24                   INC     H
+1219  7484 10 FA                DJNZ    RPCLP3
+1220  7486 E1                   POP     HL
+1221  7487 23                   INC     HL
+1222  7488 0D                   DEC     C
+1223  7489 20 F2                JR      NZ,RPCLP2
+1224  748B E1           NXTRPC  POP     HL
+1225  748C 08                   EX      AF,AF'
+1226  748D 3D                   DEC     A               ; Update row count
+1227  748E 28 0F                JR      Z,RPCATR        ; Restore police car
+1228  7490 08                   EX      AF,AF'
+1229  7491 0E 20                LD      C,32
+1230  7493 ED 42                SBC     HL,BC           ; Move up one line
+1231  7495 CB 44                BIT     0,H
+1232  7497 28 CF                JR      Z,RPCLP1
+1233  7499 7C                   LD      A,H
+1234  749A D6 07                SUB     7               ; Cross boundary
+1235  749C 67                   LD      H,A
+1236  749D 18 C9                JR      RPCLP1
+1237  749F 2A 63 6F     RPCATR  LD      HL,(ATTPOS)     ; Attr start loading pos
+1238  74A2 3A 60 6F             LD      A,(ROW)
+1239  74A5 08                   EX      AF,AF'
+1240  74A6 E5           RPCAT1  PUSH    HL
+1241  74A7 3A 61 6F             LD      A,(SKIP)
+1242  74AA 4F                   LD      C,A
+1243  74AB 09                   ADD     HL,BC
+1244  74AC 3A 62 6F             LD      A,(FILL)
+1245  74AF A7                   AND     A
+1246  74B0 28 05                JR      Z,NXTRPA
+1247  74B2 EB                   EX      DE,HL
+1248  74B3 4F                   LD      C,A
+1249  74B4 ED B0                LDIR
+1250  74B6 EB                   EX      DE,HL
+1251  74B7 E1           NXTRPA  POP     HL
+1252  74B8 08                   EX      AF,AF'
+1253  74B9 3D                   DEC     A
+1254  74BA C8                   RET     Z
+1255  74BB 08                   EX      AF,AF'
+1256  74BC 0E 20                LD      C,32
+1257  74BE ED 42                SBC     HL,BC
+1258  74C0 18 E4                JR      RPCAT1
+1259  74C2
+1260  74C2 3A 7C 6F     FROG    LD      A,(CRHFLG)      ; Crash flag
+1261  74C5 A7                   AND     A
+1262  74C6 20 17                JR      NZ,FRGCRH       ; Frog crash
+1263  74C8 32 5E 6F             LD      (UPDWN),A       ; Set no score
+1264  74CB CD E3 74             CALL    REGFRG          ; Regenerate frog
+1265  74CE 21 7A 6E             LD      HL,FRGCYC       ; Test move
+1266  74D1 35                   DEC     (HL)
+1267  74D2 C0                   RET     NZ
+1268  74D3 2B                   DEC     HL
+1269  74D4 7E                   LD      A,(HL)          ; Reset cycle count
+1270  74D5 23                   INC     HL
+1271  74D6 77                   LD      (HL),A
+1272  74D7 CD 10 75             CALL    MOVFRG
+1273  74DA 3A 7C 6F             LD      A,(CRHFLG)
+1274  74DD A7                   AND     A
+1275  74DE C8                   RET     Z
+1276  74DF CD 91 76     FRGCRH  CALL    CRASH
+1277  74E2 C9                   RET
+1278  74E3
+1279  74E3              ;*********** REGFRG **********
+1280  74E3              ; Regenerate frog if any left
+1281  74E3              ; Set GAMFLG to 0 if none left
+1282  74E3
+1283  74E3 3A 79 6E     REGFRG  LD      A,(FRGEXT)
+1284  74E6 A7                   AND     A
+1285  74E7 C0                   RET     NZ              ; Return if exist
+1286  74E8 21 81 6E             LD      HL,FRGDB
+1287  74EB 11 79 6E             LD      DE,FRGEXT
+1288  74EE 01 08 00             LD      BC,8
+1289  74F1 ED B0                LDIR
+1290  74F3 21 84 6E             LD      HL,FRGSTN       ; Update frog station
+1291  74F6 35                   DEC     (HL)
+1292  74F7 35                   DEC     (HL)
+1293  74F8 35                   DEC     (HL)
+1294  74F9 2A 7C 6E             LD      HL,(FRGPOS)
+1295  74FC 22 78 6F             LD      (OLDFRG),HL
+1296  74FF 22 7A 6F             LD      (NEWFRG),HL
+1297  7502 21 89 6D             LD      HL,FRGSTR       ; Init frog str for res
+1298  7505 11 8A 6D             LD      DE,FRGSTR+1     ; Blank frog store
+1299  7508 01 23 00             LD      BC,35
+1300  750B 36 00                LD      (HL),0
+1301  750D ED B0                LDIR
+1302  750F C9                   RET
+1303  7510
+1304  7510              ;********** MOVFRG **********
+1305  7510              ; Move frog, store and restore
+1306  7510
+1307  7510 AF           MOVFRG  XOR     A
+1308  7511 21 20 E0             LD      HL,$0E020       ; H=-32, L=32
+1309  7514 4F                   LD      C,A             ; C=> Absolute movement
+1310  7515 08                   EX      AF,AF'
+1311  7516 3E DF                LD      A,$0DF          ; Test right
+1312  7518 DB FE                IN      A,($0FE)
+1313  751A E6 01                AND     1
+1314  751C 20 06                JR      NZ,LEFT
+1315  751E 0C                   INC     C
+1316  751F 11 D7 69             LD      DE,FROG2
+1317  7522 06 01                LD      B,1
+1318  7524 3E DF        LEFT    LD      A,$0DF          ; Test left
+1319  7526 DB FE                IN      A,($0FE)
+1320  7528 E6 04                AND     4
+1321  752A 20 06                JR      NZ,DOWN
+1322  752C 0D                   DEC     C
+1323  752D 11 17 6A             LD      DE,FROG4
+1324  7530 06 03                LD      B,3
+1325  7532 3E FD        DOWN    LD      A,$0FD          ; Test down
+1326  7534 DB FE                IN      A,($0FE)
+1327  7536 E6 01                AND     1
+1328  7538 20 0B                JR      NZ,UP
+1329  753A 79                   LD      A,C
+1330  753B 85                   ADD     A,L             ; Add 32
+1331  753C 4F                   LD      C,A
+1332  753D 08                   EX      AF,AF'
+1333  753E 3D                   DEC     A
+1334  753F 08                   EX      AF,AF'          ; Dec Up/down flag
+1335  7540 11 F7 69             LD      DE,FROG3
+1336  7543 06 02                LD      B,2
+1337  7545 3E F7        UP      LD      A,$0F7          ; Test up
+1338  7547 DB FE                IN      A,($0FE)
+1339  7549 E6 01                AND     1
+1340  754B 20 0B                JR      NZ,VALID
+1341  754D 79                   LD      A,C
+1342  754E 84                   ADD     A,H             ; Add -32
+1343  754F 4F                   LD      C,A
+1344  7550 08                   EX      AF,AF'
+1345  7551 3C                   INC     A
+1346  7552 08                   EX      AF,AF'
+1347  7553 11 B7 69             LD      DE,FROG1
+1348  7556 06 00                LD      B,0
+1349  7558 78           VALID   LD      A,B             ; Store temp dir
+1350  7559 32 7D 6F             LD      (TEMDIR),A
+1351  755C ED 53 80 6F          LD      (TEMSHP),DE     ; Store temp shape
+1352  7560 AF                   XOR     A
+1353  7561 B9                   CP      C
+1354  7562 C8                   RET     Z               ; If no move go back
+1355  7563 2A 78 6F             LD      HL,(OLDFRG)
+1356  7566 CB 79                BIT     7,C             ; Test -VE
+1357  7568 47                   LD      B,A
+1358  7569 1E 07                LD      E,7             ; For boundary adj
+1359  756B 28 03                JR      Z,NETDWN        ; Net move right, down
+1360  756D 05                   DEC     B
+1361  756E 1E F9                LD      E,-7
+1362  7570 09           NETDWN  ADD     HL,BC
+1363  7571 CB 44                BIT     0,H
+1364  7573 28 03                JR      Z,VALID1        ; No cross boundary
+1365  7575 7C                   LD      A,H
+1366  7576 83                   ADD     A,E
+1367  7577 67                   LD      H,A             ; Adj hob
+1368  7578 22 7E 6F     VALID1  LD      (TEMPOS),HL
+1369  757B EB                   EX      DE,HL
+1370  757C 3E 40                LD      A,$40         ; Test upscr
+1371  757E BA                   CP      D
+1372  757F 7B                   LD      A,E
+1373  7580 20 04                JR      NZ,VALID2
+1374  7582 FE 20                CP      $20
+1375  7584 38 2F                JR      C,NVALID
+1376  7586 E6 1F        VALID2  AND     $1F             ; Test right boundary
+1377  7588 FE 1F                CP      $1F
+1378  758A 28 29                JR      Z,NVALID
+1379  758C 21 BE 50             LD      HL,$50BE        ; Test bot boundary
+1380  758F A7                   AND     A
+1381  7590 ED 52                SBC     HL,DE
+1382  7592 38 21                JR      C,NVALID
+1383  7594 21 7E 50             LD      HL,$507E        ; Test frog station
+1384  7597 ED 52                SBC     HL,DE
+1385  7599 30 11                JR      NC,YVALID
+1386  759B 7B                   LD      A,E             ; Test within box
+1387  759C E6 1F                AND     $1F
+1388  759E 67                   LD      H,A
+1389  759F 3A 84 6E             LD      A,(FRGSTN)
+1390  75A2 FE A0                CP      $0A0            ; Test last frog
+1391  75A4 38 06                JR      C,YVALID        ; No more frog station
+1392  75A6 3C                   INC     A               ; When no frog left
+1393  75A7 E6 1F                AND     $1F
+1394  75A9 94                   SUB     H
+1395  75AA 30 09                JR      NC,NVALID
+1396  75AC ED 53 7A 6F  YVALID  LD      (NEWFRG),DE     ; Store new pos
+1397  75B0 08                   EX      AF,AF'
+1398  75B1 32 5E 6F             LD      (UPDWN),A
+1399  75B4 08                   EX      AF,AF'
+1400  75B5 2A 78 6F     NVALID  LD      HL,(OLDFRG)     ; Test OLDFRG=NEWFRG
+1401  75B8 A7                   AND     A
+1402  75B9 ED 52                SBC     HL,DE
+1403  75BB 7D                   LD      A,L
+1404  75BC B4                   OR      H
+1405  75BD C8                   RET     Z               ; Return if same
+1406  75BE CD D6 75             CALL    RESFRG          ; Restore frog
+1407  75C1 2A 7A 6F             LD      HL,(NEWFRG)     ; Update old frog pos
+1408  75C4 22 78 6F             LD      (OLDFRG),HL
+1409  75C7 21 7D 6F             LD      HL,TEMDIR
+1410  75CA 11 7B 6E             LD      DE,FRGDIR
+1411  75CD 01 05 00             LD      BC,5
+1412  75D0 ED B0                LDIR
+1413  75D2 CD 28 76             CALL    STRFRG
+1414  75D5 C9                   RET
+1415  75D6
+1416  75D6              ;********** Resurrect frog **********
+1417  75D6
+1418  75D6 11 89 6D     RESFRG  LD      DE,FRGSTR       ; Storage pointer
+1419  75D9 2A 78 6F             LD      HL,(OLDFRG)     ; Restore from OLDFRG
+1420  75DC E5                   PUSH    HL
+1421  75DD 3E 02                LD      A,2             ; Row counter
+1422  75DF 08                   EX      AF,AF'
+1423  75E0 E5           RFRLP1  PUSH    HL
+1424  75E1 0E 02                LD      C,2             ; Column counter
+1425  75E3 E5           RFRLP2  PUSH    HL
+1426  75E4 06 08                LD      B,8
+1427  75E6 1A           RFRLP3  LD      A,(DE)          ; Restore from db
+1428  75E7 77                   LD      (HL),A          ; Onto screen
+1429  75E8 13                   INC     DE
+1430  75E9 24                   INC     H               ; Next char byte
+1431  75EA 10 FA                DJNZ    RFRLP3
+1432  75EC E1                   POP     HL
+1433  75ED 23                   INC     HL
+1434  75EE 0D                   DEC     C               ; Column count
+1435  75EF 20 F2                JR      NZ,RFRLP2
+1436  75F1 E1                   POP     HL
+1437  75F2 08                   EX      AF,AF'
+1438  75F3 3D                   DEC     A               ; Row count
+1439  75F4 28 10                JR      Z,RFRATR
+1440  75F6 08                   EX      AF,AF'
+1441  75F7 A7                   AND     A
+1442  75F8 0E 20                LD      C,32            ; Up one line
+1443  75FA ED 42                SBC     HL,BC
+1444  75FC CB 44                BIT     0,H
+1445  75FE 28 E0                JR      Z,RFRLP1
+1446  7600 7C                   LD      A,H
+1447  7601 D6 07                SUB     7
+1448  7603 67                   LD      H,A
+1449  7604 18 DA                JR      RFRLP1
+1450  7606 E1           RFRATR  POP     HL
+1451  7607 7C                   LD      A,H
+1452  7608 E6 18                AND     $18
+1453  760A CB 2F                SRA     A
+1454  760C CB 2F                SRA     A
+1455  760E CB 2F                SRA     A
+1456  7610 C6 58                ADD     A,$58
+1457  7612 67                   LD      H,A
+1458  7613 3E 02                LD      A,2             ; Row counter
+1459  7615 08                   EX      AF,AF'
+1460  7616 E5           RFRAT1  PUSH    HL
+1461  7617 EB                   EX      DE,HL
+1462  7618 0E 02                LD      C,2             ; Restore attr
+1463  761A ED B0                LDIR
+1464  761C EB                   EX      DE,HL
+1465  761D E1                   POP     HL
+1466  761E 08                   EX      AF,AF'
+1467  761F 3D                   DEC     A               ; Update row counter
+1468  7620 C8                   RET     Z
+1469  7621 08                   EX      AF,AF'
+1470  7622 0E 20                LD      C,32
+1471  7624 ED 42                SBC     HL,BC
+1472  7626 18 EE                JR      RFRAT1
+1473  7628
+1474  7628              ;********** STRFRG ***********
+1475  7628
+1476  7628 11 89 6D     STRFRG  LD      DE,FRGSTR
+1477  762B 2A 7A 6F             LD      HL,(NEWFRG)     ; Store base on NEWPOS
+1478  762E D9                   EXX
+1479  762F 2A 7E 6E             LD      HL,(FROGSH)     ; Load shape as well
+1480  7632 D9                   EXX
+1481  7633 E5                   PUSH    HL
+1482  7634 3E 02                LD      A,2
+1483  7636 08                   EX      AF,AF'
+1484  7637 E5           SFRLP1  PUSH    HL
+1485  7638 0E 02                LD      C,2
+1486  763A E5           SFRLP2  PUSH    HL
+1487  763B 06 08                LD      B,8             ; Store and load a char
+1488  763D 7E           SFRLP3  LD      A,(HL)
+1489  763E 12                   LD      (DE),A
+1490  763F D9                   EXX
+1491  7640 7E                   LD      A,(HL)
+1492  7641 23                   INC     HL
+1493  7642 D9                   EXX
+1494  7643 77                   LD      (HL),A
+1495  7644 13                   INC     DE
+1496  7645 24                   INC     H
+1497  7646 10 F5                DJNZ    SFRLP3
+1498  7648 E1                   POP     HL
+1499  7649 23                   INC     HL              ; Next character
+1500  764A 0D                   DEC     C
+1501  764B 20 ED                JR      NZ,SFRLP2
+1502  764D E1                   POP     HL
+1503  764E 08                   EX      AF,AF'
+1504  764F 3D                   DEC     A
+1505  7650 28 10                JR      Z,SFRATR
+1506  7652 08                   EX      AF,AF'
+1507  7653 A7                   AND     A
+1508  7654 0E 20                LD      C,32
+1509  7656 ED 42                SBC     HL,BC           ; Next row
+1510  7658 CB 44                BIT     0,H
+1511  765A 28 DB                JR      Z,SFRLP1
+1512  765C 7C                   LD      A,H
+1513  765D D6 07                SUB     7
+1514  765F 67                   LD      H,A
+1515  7660 18 D5                JR      SFRLP1
+1516  7662 E1           SFRATR  POP     HL
+1517  7663 7C                   LD      A,H             ; Calculate attr pos
+1518  7664 E6 18                AND     $18
+1519  7666 CB 2F                SRA     A
+1520  7668 CB 2F                SRA     A
+1521  766A CB 2F                SRA     A
+1522  766C C6 58                ADD     A,$58
+1523  766E 67                   LD      H,A
+1524  766F 3E 02                LD      A,2
+1525  7671 08                   EX      AF,AF'
+1526  7672 06 02        SFRAT1  LD      B,2
+1527  7674 E5                   PUSH    HL
+1528  7675 7E           SFRATLP LD      A,(HL)
+1529  7676 12                   LD      (DE),A
+1530  7677 36 04                LD      (HL),4          ; Fill frog attr
+1531  7679 23                   INC     HL
+1532  767A 13                   INC     DE
+1533  767B E6 07                AND     7               ; Test crash
+1534  767D 28 05                JR      Z,NFROG3
+1535  767F 3E 01                LD      A,1
+1536  7681 32 7C 6F             LD      (CRHFLG),A
+1537  7684 10 EF        NFROG3  DJNZ    SFRATLP
+1538  7686 E1                   POP     HL
+1539  7687 08                   EX      AF,AF'
+1540  7688 3D                   DEC     A
+1541  7689 C8                   RET     Z
+1542  768A 08                   EX      AF,AF'
+1543  768B 0E 20                LD      C,32
+1544  768D ED 42                SBC     HL,BC
+1545  768F 18 E1                JR      SFRAT1
+1546  7691
+1547  7691              ;********** Crash routine **********
+1548  7691
+1549  7691 AF           CRASH   XOR     A
+1550  7692 32 7C 6F             LD      (CRHFLG),A      ; Reset crash flag
+1551  7695 32 79 6E             LD      (FRGEXT),A      ; Set frog nonexist
+1552  7698 CD A7 76             CALL    FRGDIE
+1553  769B CD D6 75             CALL    RESFRG
+1554  769E 21 82 6F             LD      HL,NUMFRG
+1555  76A1 35                   DEC     (HL)            ; Decrease frog number
+1556  76A2 C0                   RET     NZ
+1557  76A3 32 77 6F             LD      (GAMFLG),A      ; Zeroize game flag
+1558  76A6 C9                   RET                     ; when no frog left
+1559  76A7
+1560  76A7 2A 78 6F     FRGDIE  LD      HL,(OLDFRG)     ; Old pos of frog
+1561  76AA 01 02 40             LD      BC,$4002        ; Red color
+1562  76AD D9                   EXX
+1563  76AE 21 39 6F             LD      HL,DIETON       ; Set die tone
+1564  76B1 D9                   EXX
+1565  76B2 7C                   LD      A,H             ; Test end of journey
+1566  76B3 B8                   CP      B
+1567  76B4 20 16                JR      NZ,NOTEND
+1568  76B6 7D                   LD      A,L
+1569  76B7 B8                   CP      B
+1570  76B8 30 12                JR      NC,NOTEND
+1571  76BA 11 46 6F             LD      DE,SCORE+3      ; 100 pts bonus
+1572  76BD EB                   EX      DE,HL
+1573  76BE 34                   INC     (HL)
+1574  76BF 21 47 6F             LD      HL,SCORE+4
+1575  76C2 CD 4B 77             CALL    DISSCR
+1576  76C5 0E 06                LD      C,6             ; Yellow
+1577  76C7 D9                   EXX
+1578  76C8 21 15 6F             LD      HL,HOMTON
+1579  76CB D9                   EXX
+1580  76CC 79           NOTEND  LD      A,C
+1581  76CD 32 65 6F             LD      (ATTR),A
+1582  76D0 2A 78 6F             LD      HL,(OLDFRG)
+1583  76D3 ED 5B 7E 6E          LD      DE,(FROGSH)
+1584  76D7 CD 7A 70             CALL    DRWFRG
+1585  76DA 11 20 00             LD      DE,32           ; Line adjust
+1586  76DD 19                   ADD     HL,DE
+1587  76DE 08                   EX      AF,AF'
+1588  76DF 3A 65 6F             LD      A,(ATTR)
+1589  76E2 08                   EX      AF,AF'
+1590  76E3 06 05                LD      B,5
+1591  76E5 C5           FLASLP  PUSH    BC
+1592  76E6 E5                   PUSH    HL              ; Attribute pointer
+1593  76E7 AF                   XOR     A               ; Black ink black paper
+1594  76E8 77                   LD      (HL),A
+1595  76E9 23                   INC     HL
+1596  76EA 77                   LD      (HL),A
+1597  76EB ED 52                SBC     HL,DE
+1598  76ED 77                   LD      (HL),A
+1599  76EE 2B                   DEC     HL
+1600  76EF 77                   LD      (HL),A
+1601  76F0 CD 08 77             CALL    FRGTON          ; Generate frog tone
+1602  76F3 E1                   POP     HL
+1603  76F4 E5                   PUSH    HL
+1604  76F5 08                   EX      AF,AF'
+1605  76F6 77                   LD      (HL),A          ; Black paper, red or
+1606  76F7 23                   INC     HL              ; yellow ink
+1607  76F8 77                   LD      (HL),A
+1608  76F9 A7                   AND     A
+1609  76FA ED 52                SBC     HL,DE
+1610  76FC 77                   LD      (HL),A
+1611  76FD 2B                   DEC     HL
+1612  76FE 77                   LD      (HL),A
+1613  76FF 08                   EX      AF,AF'
+1614  7700 CD 08 77             CALL    FRGTON
+1615  7703 E1                   POP     HL
+1616  7704 C1                   POP     BC
+1617  7705 10 DE                DJNZ    FLASLP
+1618  7707 C9                   RET
+1619  7708
+1620  7708              ;********** FRGTON **********
+1621  7708
+1622  7708 D9           FRGTON  EXX
+1623  7709 E5                   PUSH    HL
+1624  770A CD B5 77             CALL    TONE1
+1625  770D E1                   POP     HL
+1626  770E 01 04 00             LD      BC,4            ; Move down database
+1627  7711 08                   EX      AF,AF'
+1628  7712 FE 06                CP      6
+1629  7714 28 03                JR      Z,HOME
+1630  7716 01 FC FF             LD      BC,-4           ; Move up database
+1631  7719 09           HOME    ADD     HL,BC
+1632  771A D9                   EXX
+1633  771B 08                   EX      AF,AF'
+1634  771C C9                   RET
+1635  771D
+1636  771D 3A 79 6E     CALSCR  LD      A,(FRGEXT)      ; Test existence
+1637  7720 A7                   AND     A
+1638  7721 C8                   RET     Z               ; No update of score
+1639  7722 3A 5E 6F             LD      A,(UPDWN)       ; Test up/down movement
+1640  7725 A7                   AND     A               ; Test any score
+1641  7726 C8                   RET     Z
+1642  7727 21 47 6F             LD      HL,SCORE+4      ; Add 10 to score
+1643  772A CB 7F                BIT     7,A             ; Test move down
+1644  772C 20 03                JR      NZ,DWNSCR       ; Down score
+1645  772E 34                   INC     (HL)
+1646  772F 18 1A                JR      DISSCR          ; Dis score
+1647  7731 3A 79 6F     DWNSCR  LD      A,(OLDFRG+1)    ; Test hob
+1648  7734 FE 40                CP      $40             ; Test first block
+1649  7736 20 09                JR      NZ,TLHWY        ; Test low highway
+1650  7738 3A 78 6F             LD      A,(OLDFRG)
+1651  773B FE C0                CP      $0C0            ; Not even step on hwy
+1652  773D D8                   RET     C
+1653  773E 34                   INC     (HL)
+1654  773F 18 0A                JR      DISSCR
+1655  7741 FE 50        TLHWY   CP      $50             ; Test in low hwy
+1656  7743 C0                   RET     NZ
+1657  7744 3A 78 6F             LD      A,(OLDFRG)
+1658  7747 FE 20                CP      $20
+1659  7749 D0                   RET     NC              ; No score if step hwy
+1660  774A 34                   INC     (HL)
+1661  774B 06 04        DISSCR  LD      B,4             ; HL => TENTH'S POS
+1662  774D 7E           ADDLOP  LD      A,(HL)
+1663  774E FE 3A        CRYLOP  CP      $3A             ; Carry loop
+1664  7750 38 07                JR      C,UPDDIG        ; Update digit
+1665  7752 D6 0A                SUB     10
+1666  7754 2B                   DEC     HL
+1667  7755 34                   INC     (HL)            ; Carry
+1668  7756 23                   INC     HL
+1669  7757 18 F5                JR      CRYLOP
+1670  7759 77           UPDDIG  LD      (HL),A
+1671  775A 2B                   DEC     HL
+1672  775B 10 F0                DJNZ    ADDLOP
+1673  775D 21 44 6F             LD      HL,SCORE+1
+1674  7760 CD 6F 77             CALL    SCRIMG          ; Score image
+1675  7763 21 06 40             LD      HL,$4006
+1676  7766 11 59 6F             LD      DE,IMAGE
+1677  7769 06 05                LD      B,5
+1678  776B CD 28 73             CALL    DISASC
+1679  776E C9                   RET
+1680  776F
+1681  776F 11 59 6F     SCRIMG  LD      DE,IMAGE
+1682  7772 01 05 00             LD      BC,5
+1683  7775 ED B0                LDIR
+1684  7777 21 59 6F             LD      HL,IMAGE
+1685  777A 01 30 04             LD      BC,$0430
+1686  777D 79           PREZER  LD      A,C
+1687  777E BE                   CP      (HL)            ; Test 30H
+1688  777F 20 05                JR      NZ,PREZEX
+1689  7781 36 20                LD      (HL),$20        ; Space fill
+1690  7783 23                   INC     HL
+1691  7784 10 F7                DJNZ    PREZER
+1692  7786 C9           PREZEX  RET
+1693  7787
+1694  7787 3E BF        SIREN   LD      A,$0BF
+1695  7789 DB FE                IN      A,($0FE)
+1696  778B E6 01                AND     1
+1697  778D 20 09                JR      NZ,NSOUND
+1698  778F 3A 73 6F             LD      A,(SOUNDF)      ; Reset sound condition
+1699  7792 3C                   INC     A
+1700  7793 E6 01                AND     1
+1701  7795 32 73 6F             LD      (SOUNDF),A
+1702  7798 3A 73 6F     NSOUND  LD      A,(SOUNDF)
+1703  779B A7                   AND     A
+1704  779C 28 25                JR      Z,DELAY
+1705  779E 3A 72 6F             LD      A,(CHASE)       ; Is police car on
+1706  77A1 A7                   AND     A
+1707  77A2 28 1F                JR      Z,DELAY
+1708  77A4 3A 74 6F             LD      A,(TONFLG)
+1709  77A7 3C                   INC     A
+1710  77A8 E6 01                AND     1
+1711  77AA 32 74 6F             LD      (TONFLG),A
+1712  77AD 21 0D 6F             LD      HL,PCTON1
+1713  77B0 28 03                JR      Z,TONE1
+1714  77B2 21 11 6F             LD      HL,PCTON2
+1715  77B5 5E           TONE1   LD      E,(HL)          ; DE=duration*frequency
+1716  77B6 23                   INC     HL
+1717  77B7 56                   LD      D,(HL)
+1718  77B8 23                   INC     HL
+1719  77B9 4E                   LD      C,(HL)
+1720  77BA 23                   INC     HL
+1721  77BB 46                   LD      B,(HL)
+1722  77BC C5                   PUSH    BC
+1723  77BD E1                   POP     HL              ; HL=437500/freq-30.125
+1724  77BE CD B5 03             CALL    $03B5
+1725  77C1 F3                   DI                      ; 03B5H enable interrupt
+1726  77C2 C9                   RET
+1727  77C3 01 00 18     DELAY   LD      BC,6144
+1728  77C6 0B           WAIT    DEC     BC
+1729  77C7 78                   LD      A,B
+1730  77C8 B1                   OR      C
+1731  77C9 20 FB                JR      NZ,WAIT
+1732  77CB C9                   RET
+1733  77CC
+1734  77CC              ;********** Random number routine **********
+1735  77CC
+1736  77CC E5           RANDNO  PUSH    HL
+1737  77CD C5                   PUSH    BC
+1738  77CE 2A 75 6F             LD      HL,(RND)
+1739  77D1 46                   LD      B,(HL)
+1740  77D2 23                   INC     HL
+1741  77D3 3E 3F                LD      A,$3F           ; Bound pointer within ROM
+1742  77D5 A4                   AND     H
+1743  77D6 67                   LD      H,A
+1744  77D7 78                   LD      A,B
+1745  77D8 22 75 6F             LD      (RND),HL
+1746  77DB C1                   POP     BC
+1747  77DC E1                   POP     HL
+1748  77DD C9                   RET
+1749  77DE
+1750  77DE 21 44 6F     OVER    LD      HL,SCORE+1      ; High score manage
+1751  77E1 11 54 6F             LD      DE,HISCR
+1752  77E4 06 05                LD      B,5
+1753  77E6 1A           SORTLP  LD      A,(DE)
+1754  77E7 BE                   CP      (HL)
+1755  77E8 28 03                JR      Z,SAMSCR        ; Test 1st NE digit
+1756  77EA D0                   RET     NC
+1757  77EB 18 05                JR      SCRGT           ; Update high score
+1758  77ED 13           SAMSCR  INC     DE
+1759  77EE 23                   INC     HL
+1760  77EF 10 F5                DJNZ    SORTLP
+1761  77F1 C9                   RET
+1762  77F2 21 44 6F     SCRGT   LD      HL,SCORE+1
+1763  77F5 11 54 6F             LD      DE,HISCR
+1764  77F8 01 05 00             LD      BC,5
+1765  77FB ED B0                LDIR
+1766  77FD C9                   RET
+1767  77FE
+1768  77FE              ;********** Final routine **********
+1769  77FE
+1770  77FE 3E 38        FINAL   LD      A,56            ; Set white border
+1771  7800 32 48 5C             LD      (23624),A
+1772  7803 21 00 40             LD      HL,$4000        ; Start of screen
+1773  7806 11 01 40             LD      DE,$4001
+1774  7809 01 FF 17             LD      BC,6143         ; Size of screen
+1775  780C 36 00                LD      (HL),0
+1776  780E ED B0                LDIR
+1777  7810 21 00 58             LD      HL,$5800        ; Start of attribute file
+1778  7813 11 01 58             LD      DE,$5801
+1779  7816 01 FF 02             LD      BC,767
+1780  7819 36 38                LD      (HL),56         ; White paper black ink
+1781  781B ED B0                LDIR
+1782  781D C9                   RET
+1783  781E
+1784  781E                      ; END     START
+1785  781E
+1786  781E                      SAVESNA "freeway.sna",START
+# file closed: freeway.z80
