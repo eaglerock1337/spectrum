@@ -29,11 +29,21 @@ connect4 - A connect 4 game written in Z80 assembler.
 
 This is me stumbling around figuring this Z80 assembly stuff out.
 
+#### 01 - screen
+
+Basic writin' to the screen kinda stuff.
+
 - screen   - basic write-to-screen memory routine with bitshifting.
 - charscr  - write screen memory character-by-character with bitshifting.
 - colorscr - character screen writing with colorization routine.
 - fastscr  - color screen writing routine with fast screen reset using stack.
 - rollscr  - color screen writing routine alternating fill and empty routines.
+
+#### 02 - text
+
+Let's actually work on some text, eh?
+
+- text - Print out some text to the screen using block character graphics.
 
 ### c folder
 

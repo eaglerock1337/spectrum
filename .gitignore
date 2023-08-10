@@ -1,3 +1,4 @@
-*.sna
+*.hex
 *.map
+*.sna
 a.out
