@@ -78,4 +78,6 @@ Everything in this folder is copyrighted and shared by their respective authors.
 
 ZX Spectrum tapefiles I have downloaded for local testing, sourced from [TZXVault](https://tzxvault.org).
 
-- Horizons Tape (1982 Sinclair demo tape by Psion)
+- Horizons Tape - 1982 Sinclair demo tape by Psion
+- ZXClive - Clive Sinclair demo by Polish ZX All Stars
+

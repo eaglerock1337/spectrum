@@ -6,16 +6,14 @@
 
 ; constants
 SCR_START = $4000
-SCR_END   = $57FF
-ATT_START = $5800
-ATT_END   = $5AFF
+SCR_END   = $5800
 
 start:
         exx
         push hl         ; store hl' for basic
 
         ld hl,SCR_START                 ; set hl to memory start
-        ld de,SCR_END-SCR_START+1       ; length of screen memory
+        ld de,SCR_END-SCR_START         ; length of screen memory
         
 loop:
         call wait       ; delay loop
