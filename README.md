@@ -81,3 +81,7 @@ ZX Spectrum tapefiles I have downloaded for local testing, sourced from [TZXVaul
 - Horizons Tape - 1982 Sinclair demo tape by Psion
 - ZXClive - Clive Sinclair demo by Polish ZX All Stars
 
+### Other findings
+
+[breakintoprogram.co.uk](http://www.breakintoprogram.co.uk/) - ZX Spectrum/Z80 programming resources & tutorials courtesy of Dean Belfield
+[lib-spectrum](https://github.com/breakintoprogram/lib-spectrum) - Z80 assembler library routines for the ZX Spectrum, including I/O processing, screen rendering, audio, sound, sprites, math routines, & vector graphics.
